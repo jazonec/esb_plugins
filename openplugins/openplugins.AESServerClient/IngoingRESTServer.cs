@@ -50,11 +50,13 @@ namespace openplugins.AESServerClient
             ServerConfig _serverConfig;
 
             WriteLogString("Приступаю к инициализации сервера, порт:" + _serverSettings.Port);
+            ct.WaitHandle.WaitOne(60000);
             try
             {
                 _serverConfig = new ServerConfig()
-                    .AddRoute(_serverSettings.Path, new MainHandler(messageHandler, _messageFactory, _logger, _encryptTools, _serverSettings.Path, _debugMode))
-                    .AddRoute(_serverSettings.Path + "/*", new RSAHandler(_logger, _encryptTools, _serverSettings.Path, _debugMode))
+                    .AddLogger(new MainLogger(_logger))
+                    .AddRoute(_serverSettings.Path, new MainHandler(messageHandler, _messageFactory, _encryptTools, _serverSettings.Path))
+                    .AddRoute(_serverSettings.Path + "/*", new RSAHandler(_encryptTools, _serverSettings.Path))
                     .AddRoute(new FileHandler("."));
                 _serverConfig.LoadCertificate(_serverSettings.CertFile, _serverSettings.CertPassword);
                 WriteLogString("Инициализация завершена");
@@ -69,11 +71,11 @@ namespace openplugins.AESServerClient
             WriteLogString("Сервер запущен");
             while (!ct.IsCancellationRequested)
             {
-                if (task.Status == TaskStatus.Running)
+                ct.WaitHandle.WaitOne(60000);// Проверяем состояние раз в минуту
+                if (task.Status == TaskStatus.Faulted)
                 {
-                    continue;
+                    throw new Exception("Сервер самостоятельно остановился! ", task.Exception.InnerException);
                 }
-                throw new Exception("Сервер самостоятельно остановился! " + task.Exception.Message);
             }
             WriteLogString("Останавливаю сервер");
             task.Wait();
@@ -87,40 +89,63 @@ namespace openplugins.AESServerClient
             }
         }
     }
+    internal class MainLogger : Ceen.IMessageLogger
+    {
+        private ESB_ConnectionPoints.PluginsInterfaces.ILogger _logger;
+        public MainLogger(ESB_ConnectionPoints.PluginsInterfaces.ILogger logger)
+        {
+            _logger = logger;
+        }
+
+        public Task LogMessageAsync(IHttpContext context, Exception ex, LogLevel loglevel, string message, DateTime when)
+        {
+            switch (loglevel)
+            {
+                case LogLevel.Error:
+                    _logger.Error(message, ex);
+                    break;
+                case LogLevel.Warning:
+                    _logger.Warning(message);
+                    break;
+                case LogLevel.Information:
+                    _logger.Info(message);
+                    break;
+                case LogLevel.Debug:
+                    _logger.Debug(message);
+                    break;
+                default:
+                    _logger?.Error(message);
+                    break;
+
+            }
+            return Task.FromResult(true);
+        }
+
+        Task Ceen.ILogger.LogRequestCompletedAsync(IHttpContext context, Exception ex, DateTime started, TimeSpan duration)
+        {
+            return Task.FromResult(true);
+        }
+    }
     internal class MainHandler : IHttpModule
     {
-        private readonly ESB_ConnectionPoints.PluginsInterfaces.ILogger _logger;
         private readonly IMessageFactory _messageFactory;
         private readonly IMessageHandler _messageHandler;
         private readonly EncryptTools _encryptTools;
         private readonly string _mainPath;
-        private readonly bool _debugMode;
         private const int AES_KEY_LENGTH = 16;
 
         public MainHandler(IMessageHandler messageHandler,
                            IMessageFactory messageFactory,
-                           ESB_ConnectionPoints.PluginsInterfaces.ILogger logger,
                            EncryptTools encryptTools,
-                           string path,
-                           bool debugMode)
+                           string path)
         {
-            _debugMode = debugMode;
-            _logger = logger;
             _messageFactory = messageFactory;
             _messageHandler = messageHandler;
             _encryptTools = encryptTools;
             _mainPath = path;
         }
 
-        private void WriteLogString(string log)
-        {
-            if (_debugMode)
-            {
-                _logger.Debug(log);
-            }
-        }
-
-        private string GetRequestData(IHttpRequest request)
+        private string GetRequestData(IHttpContext context, IHttpRequest request)
         {
             using (Stream body = request.Body)
             {
@@ -129,14 +154,14 @@ namespace openplugins.AESServerClient
                 {
                     if (request.ContentType != null)
                     {
-                        WriteLogString(string.Format("Client data content type {0}", request.ContentType));
+                        context.LogDebugAsync(string.Format("Client data content type {0}", request.ContentType));
                     }
-                    WriteLogString(string.Format("Client data content length {0}", request.ContentLength));
+                    context.LogDebugAsync(string.Format("Client data content length {0}", request.ContentLength));
 
-                    WriteLogString("Start of client data:");
+                    context.LogDebugAsync("Start of client data:");
                     string s = reader.ReadToEnd();
-                    WriteLogString(s);
-                    WriteLogString("End of client data:");
+                    context.LogDebugAsync(s);
+                    context.LogDebugAsync("End of client data:");
                     body.Close();
                     reader.Close();
                     return s;
@@ -148,13 +173,14 @@ namespace openplugins.AESServerClient
         {
             IHttpRequest request = context.Request;
             IHttpResponse response = context.Response;
-            WriteLogString("Method: " + request.Method);
-            WriteLogString("Path: " + request.Path);
+            await context.LogDebugAsync("Method: " + request.Method);
+            await context.LogDebugAsync("Path: " + request.Path);
 
             if (request.ContentLength == 0)
             {
                 response.StatusCode = Ceen.HttpStatusCode.BadRequest;
                 response.StatusMessage = "payload is requirable";
+                await context.LogDebugAsync("Запрос с пустым телом");
                 return true;
             }
             if (request.Method != "POST")
@@ -162,7 +188,7 @@ namespace openplugins.AESServerClient
                 response.StatusCode = Ceen.HttpStatusCode.MethodNotAllowed;
                 return true;
             }
-            string body = GetRequestData(request);
+            string body = GetRequestData(context, request);
             if (request.Path == _mainPath)
             {
                 try
@@ -191,7 +217,7 @@ namespace openplugins.AESServerClient
                         response.StatusCode = Ceen.HttpStatusCode.BadRequest;
                         response.StatusMessage = "Missed mandatory property(s)";
                         await response.WriteAllJsonAsync("{\"error\":\"" + errorMessage + "\"}");
-                        _logger.Error(errorMessage);
+                        await context.LogInformationAsync(errorMessage);
                         return true;
                     }
 
@@ -201,8 +227,7 @@ namespace openplugins.AESServerClient
                     }
                     catch (Exception ex)
                     {
-                        WriteLogString(ex.Message);
-                        _logger.Info("Некорректный id (" + (string)incomingMessage["id"] + "), сообщению назначен новый.");
+                        await context.LogInformationAsync("Некорректный id (" + (string)incomingMessage["id"] + "), сообщению назначен новый.", ex);
                         messageId = Guid.NewGuid();
                     }
 
@@ -221,7 +246,7 @@ namespace openplugins.AESServerClient
                             errorMessage = "Wrong key lenght: " + key.Length;
                             response.StatusCode = Ceen.HttpStatusCode.BadRequest;
                             await response.WriteAllJsonAsync("{\"error\":\"" + errorMessage + "\"}");
-                            _logger.Error(
+                            await context.LogErrorAsync(
                                 String.Format(
                                     "Некорректная длина AES-ключа после расшифровки: {0}. Требуется {1}",
                                     key.Length,
@@ -237,7 +262,7 @@ namespace openplugins.AESServerClient
                         {
                             response.StatusCode = Ceen.HttpStatusCode.BadRequest;
                             await response.WriteAllJsonAsync("{\"decryptionError\":\"" + ex.Message + "\"}");
-                            _logger.Error("Ошибка расшифровки входящего сообщения!", ex);
+                            await context.LogErrorAsync("Ошибка расшифровки входящего сообщения!", ex);
                             return true;
                         }
                     }
@@ -246,7 +271,7 @@ namespace openplugins.AESServerClient
                     foreach(var header in request.Headers)
                     {
                         message.AddPropertyWithValue("HTTP_HEADER_" + header.Key, header.Value);
-                        WriteLogString(string.Format("HTTP_HEADER_{0}: {1}", header.Key, header.Value));
+                        await context.LogDebugAsync(string.Format("HTTP_HEADER_{0}: {1}", header.Key, header.Value));
                     }
                     message.Body = Encoding.UTF8.GetBytes(decrypted);
                     message.Id = messageId;
@@ -266,15 +291,15 @@ namespace openplugins.AESServerClient
                     }
                     if (count == 5)
                     {
-                        _logger.Warning(decrypted);
-                        _logger.Error("Не смог отправить поступившее сообщение в шину!");
+                        await context.LogWarningAsync(decrypted);
+                        await context.LogErrorAsync("Не смог отправить поступившее сообщение в шину!");
                     }
                 }
                 catch (Exception ex)
                 {
                     response.StatusCode = Ceen.HttpStatusCode.InternalServerError;
                     await response.WriteAllJsonAsync("{\"error\":\"" + ex.Message + "\"}");
-                    _logger.Error("Ошибка получения сообщения", ex);
+                    await context.LogErrorAsync("Ошибка получения сообщения", ex);
                 }
                 return true;
             }
@@ -282,7 +307,7 @@ namespace openplugins.AESServerClient
             {
                 response.StatusCode = Ceen.HttpStatusCode.NotFound;
                 await response.WriteAllJsonAsync("{\"error\":\"Функция не поддерживается\"}");
-                _logger.Error("Вызов неподдерживаемой функции: " + request.Path);
+                await context.LogErrorAsync("Вызов неподдерживаемой функции: " + request.Path);
                 return true;
             }
         }
@@ -290,31 +315,16 @@ namespace openplugins.AESServerClient
     }
     internal class RSAHandler : IHttpModule
     {
-        private readonly ESB_ConnectionPoints.PluginsInterfaces.ILogger _logger;
         private readonly EncryptTools _encryptTools;
         private readonly string _mainPath;
-        private readonly bool _debugMode;
 
-        public RSAHandler(ESB_ConnectionPoints.PluginsInterfaces.ILogger logger,
-                           EncryptTools encryptTools,
-                           string path,
-                           bool debugMode)
+        public RSAHandler(EncryptTools encryptTools, string path)
         {
-            _debugMode = debugMode;
-            _logger = logger;
             _encryptTools = encryptTools;
             _mainPath = path;
         }
 
-        private void WriteLogString(string log)
-        {
-            if (_debugMode)
-            {
-                _logger.Debug(log);
-            }
-        }
-
-        private string GetRequestData(IHttpRequest request)
+        private string GetRequestData(IHttpContext context, IHttpRequest request)
         {
             using (Stream body = request.Body)
             {
@@ -323,14 +333,14 @@ namespace openplugins.AESServerClient
                 {
                     if (request.ContentType != null)
                     {
-                        WriteLogString(string.Format("Client data content type {0}", request.ContentType));
+                        context.LogDebugAsync(string.Format("Client data content type {0}", request.ContentType));
                     }
-                    WriteLogString(string.Format("Client data content length {0}", request.ContentLength));
+                    context.LogDebugAsync(string.Format("Client data content length {0}", request.ContentLength));
 
-                    WriteLogString("Start of client data:");
+                    context.LogDebugAsync("Start of client data:");
                     string s = reader.ReadToEnd();
-                    WriteLogString(s);
-                    WriteLogString("End of client data:");
+                    context.LogDebugAsync(s);
+                    context.LogDebugAsync("End of client data:");
                     body.Close();
                     reader.Close();
                     return s;
@@ -342,8 +352,8 @@ namespace openplugins.AESServerClient
         {
             IHttpRequest request = context.Request;
             IHttpResponse response = context.Response;
-            WriteLogString("Method: " + request.Method);
-            WriteLogString("Path: " + request.Path);
+            await context.LogDebugAsync("Method: " + request.Method);
+            await context.LogDebugAsync("Path: " + request.Path);
 
             if (request.ContentLength == 0)
             {
@@ -356,7 +366,7 @@ namespace openplugins.AESServerClient
                 response.StatusCode = Ceen.HttpStatusCode.MethodNotAllowed;
                 return true;
             }
-            string body = GetRequestData(request);
+            string body = GetRequestData(context, request);
             if (request.Path == (_mainPath + "/rsaencrypt"))
             {
                 try
@@ -368,7 +378,7 @@ namespace openplugins.AESServerClient
                 {
                     response.StatusCode = Ceen.HttpStatusCode.InternalServerError;
                     await response.WriteAllAsync(ex.Message);
-                    _logger.Error("Ошибка шифровки сообщения", ex);
+                    await context.LogErrorAsync("Ошибка шифровки сообщения", ex);
                 }
                 return true;
             }
@@ -384,7 +394,7 @@ namespace openplugins.AESServerClient
                 {
                     response.StatusCode = Ceen.HttpStatusCode.InternalServerError;
                     await response.WriteAllAsync(ex.Message);
-                    _logger.Error("Ошибка дешифровки сообщения", ex);
+                    await context.LogErrorAsync("Ошибка дешифровки сообщения", ex);
                 }
                 return true;
             }
@@ -392,7 +402,7 @@ namespace openplugins.AESServerClient
             {
                 response.StatusCode = Ceen.HttpStatusCode.NotFound;
                 await response.WriteAllJsonAsync("{\"error\":\"Функция не поддерживается\"}");
-                _logger.Error("Вызов неподдерживаемой функции: " + request.Path);
+                await context.LogErrorAsync("Вызов неподдерживаемой функции: " + request.Path);
                 return true;
             }
         }
