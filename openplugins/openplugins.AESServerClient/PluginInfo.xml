@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <PluginSettings xmlns="http://axelot.ru/esb/cc/2015/01"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://axelot.ru/esb/cc/2015/01 PluginManifest.xsd ">
-	<dotNET name="openplugins.AESServerClient" targetPlatform="Windows" version="1.0.3.1">
+	<dotNET name="openplugins.AESServerClient" targetPlatform="Windows" version="1.0.3.5">
 		<readme>Сервер и клиент для обмена AES-шифрованными данными</readme>
 		<factories>
 			<factory description="openplugins: REST-сервер приема сообщений"
-				name="VSMPO.ESB_Plugins.rttech_server.IngoingConnectionPointFactory, VSMPO.ESB_Plugins.rttech_server" type="Ingoing">
+				name="openplugins.AESServerClient.IngoingConnectionPointFactory, openplugins.AESServerClient" type="Ingoing">
 				<parameters>
 					<parameter name="Settings" type="string">
 						<comment>JSON-строка с настройками</comment>
@@ -13,7 +13,7 @@
 				</parameters>
 			</factory>
 			<factory description="openplugins: REST-клиент отправки сообщений"
-				name="VSMPO.ESB_Plugins.rttech_server.OutgoingConnectionPointFactory, VSMPO.ESB_Plugins.rttech_server" type="Outgoing">
+				name="openplugins.AESServerClient.OutgoingConnectionPointFactory, openplugins.AESServerClient" type="Outgoing">
 				<parameters>
 					<parameter name="Settings" type="string">
 						<comment>JSON-строка с настройками</comment>

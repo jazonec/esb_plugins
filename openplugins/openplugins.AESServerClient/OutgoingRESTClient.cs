@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace openplugins.AESServerClient
 {
-    internal class OutgoingRESTClient : IOutgoingConnectionPoint
+    internal class OutgoingRESTClient : IStandartOutgoingConnectionPoint
     {
         // main settings
         private readonly ILogger _logger;
@@ -54,6 +54,7 @@ namespace openplugins.AESServerClient
         public void Initialize()
         {
         }
+
         public void Run(IMessageSource messageSource, IMessageReplyHandler replyHandler, CancellationToken ct)
         {
             while (!ct.IsCancellationRequested)
@@ -139,41 +140,35 @@ namespace openplugins.AESServerClient
     }
     internal class EndpointSettings
     {
-        private string _url;
-        private string _port;
-        private string _username;
-        private string _password;
-        private Method _method;
-
-        public string Url { get { return _url; } set { _url = value; } }
-        public string Port { get { return _port; } set { _port = value; } }
-        public string Username { get { return _username; } set { _username = value; } }
-        public string Password { get { return _password; } set { _password = value; } }
-        public Method Method { get { return _method; } set { _method = value; } }
+        public string Url { get; set; }
+        public string Port { get; set; }
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public Method Method { get; set; }
 
         public EndpointSettings(JObject settings)
         {
-            _url = (string)settings["url"];
-            _port = (string)settings["port"];
-            _username = (string)settings["username"];
-            _password = (string)settings["password"];
+            Url = (string)settings["url"];
+            Port = (string)settings["port"];
+            Username = (string)settings["username"];
+            Password = (string)settings["password"];
             string methodString = (string)settings["method"];
             switch (methodString)
             {
                 case "POST":
-                    _method = Method.Post;
+                    Method = Method.Post;
                     break;
                 case "PUT":
-                    _method = Method.Put;
+                    Method = Method.Put;
                     break;
                 case "DELETE":
-                    _method = Method.Delete;
+                    Method = Method.Delete;
                     break;
                 case "GET":
-                    _method = Method.Get;
+                    Method = Method.Get;
                     break;
                 default:
-                    _method = Method.Post;
+                    Method = Method.Post;
                     break;
             }
         }

@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек коннектора",
+
+  "properties": {
+
+    "debug": {
+      "type": "string",
+      "pattern": "(^true$)|(^false$)",
+      "description": "Признак работы в debug-режиме (логируется всё)"
+    },
+
+    "encoding": {
+      "type": "string",
+      "pattern": "(^true$)|(^false$)",
+      "description": "Кодировать исходящее сообщение"
+    },
+
+    "endpoint": {
+      "type": "object",
+      "description": "Настройки endpoint, куда отправлять сообщение",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "URL для отправки сообщения"
+        },
+        "username": {
+          "type": "string",
+          "description": "Логин"
+        },
+        "password": {
+          "type": "string",
+          "description": "Пароль"
+        }
+      },
+      "required": [ "url", "password", "username" ]
+    },
+
+    "rsa": {
+      "type": "object",
+      "description": "Настройки RSA-шифрования",
+      "properties": {
+        "public": {
+          "type": "object",
+          "description": "Данные public-ключа для шифрования",
+          "properties": {
+            "modulus": {
+              "type": "string",
+              "description": "Раздел modulus из публичного ключа (для работы в nix-системе)"
+            },
+            "xml": {
+              "type": "string",
+              "description": "XML-представление публичного ключа (http://superdry.apphb.com/tools/online-rsa-key-converter для конвертации)"
+            }
+          },
+          "anyOf": [
+            {
+              "required": [ "modulus" ]
+            },
+            {
+              "required": [ "xml" ]
+            }
+          ]
+        }
+      },
+      "required": [ "public" ]
+    }
+  },
+
+  "required": [ "rsa", "endpoint", "encoding" ]
+}

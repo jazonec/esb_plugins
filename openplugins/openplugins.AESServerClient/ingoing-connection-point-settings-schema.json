@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек коннектора",
+
+  "properties": {
+
+    "debug": {
+      "type": "string",
+      "pattern": "(^true$)|(^false$)",
+      "description": "Признак работы в debug-режиме (логируется всё)"
+    },
+
+    "server": {
+      "type": "object",
+      "description": "Настройки REST-сервера",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "description": "Порт",
+          "maximum": 65535
+        },
+        "path": {
+          "type": "string",
+          "description": "path, который будет принимать сообщения",
+          "pattern": "^\/[a-zA-Z0-9]+$"
+        },
+        "certfile": {
+          "type": "string",
+          "description": "Путь к файлу сертификата (SSL)"
+        },
+        "certpassword": {
+          "type": "string",
+          "description": "Пароль к файлу сертификата (SSL)"
+        }
+      },
+      "required": [ "port", "certfile", "certpassword", "path" ]
+    },
+
+    "rsa": {
+      "type": "object",
+      "description": "Настройки RSA-шифрования",
+      "properties": {
+        "certificate": {
+          "type": "object",
+          "description": "Данные сертификата",
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Путь к файлу сертификата (для RSA-дешифровки ключа)"
+            }
+          },
+          "required": [ "file" ]
+        }
+      },
+      "required": ["certificate"]
+    }
+
+  },
+
+  "required": [ "rsa", "server" ]
+}

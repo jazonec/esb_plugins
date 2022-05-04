@@ -31,6 +31,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Ceen.Common, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Ceen.Httpd.0.9.9\lib\netstandard2.0\Ceen.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Ceen.Httpd, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Ceen.Httpd.0.9.9\lib\netstandard2.0\Ceen.Httpd.dll</HintPath>
+    </Reference>
     <Reference Include="ESB_ConnectionPoints.PluginsInterfaces">
       <HintPath>..\ESB_ConnectionPoints.PluginsInterfaces.dll</HintPath>
     </Reference>
@@ -79,6 +85,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EncryptTools.cs" />
+    <Compile Include="IngoingConnectionPointFactory.cs" />
+    <Compile Include="IngoingRESTServer.cs" />
     <Compile Include="OutgoingConnectionPointFactory.cs" />
     <Compile Include="OutgoingRESTClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -90,10 +98,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="ingoing-connection-point-settings-schema.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="outgoing-connection-point-settings-schema.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>powershell Compress-Archive -Path '$(TargetDir)*.dll', '$(TargetDir)*.pdb', '$(TargetDir)*.xml' -DestinationPath '$(SolutionDir)plugins\$(ProjectName).zip' -Force</PostBuildEvent>
+    <PostBuildEvent>powershell Compress-Archive -Path '$(TargetDir)*.dll', '$(TargetDir)*.pdb', '$(TargetDir)*.xml', '$(TargetDir)*.json' -DestinationPath '$(SolutionDir)plugins\$(ProjectName).zip' -Force</PostBuildEvent>
   </PropertyGroup>
 </Project>
