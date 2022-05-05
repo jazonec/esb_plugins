@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<PluginSettings xmlns="http://axelot.ru/esb/cc/2015/01"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://axelot.ru/esb/cc/2015/01 PluginManifest.xsd ">
+	<dotNET name="openplugins.ReflectBatchMessage" targetPlatform="Windows" version="1.0.1.1">
+		<readme>Плагин для создания сообщения-массива из исходящих сообщений</readme>
+		<factories>
+			<factory description="openplugins: Создание batch-сообщения"
+				name="openplugins.ReflectBatchMessage.OutgoingConnectionPointFactory, openplugins.ReflectBatchMessage" type="Outgoing">
+				<parameters>
+					<parameter name="Settings" type="string">
+						<comment>JSON-строка с настройками (схема внутри архива плагина)</comment>
+					</parameter>
+				</parameters>
+			</factory>
+		</factories>
+	</dotNET>
+</PluginSettings>
