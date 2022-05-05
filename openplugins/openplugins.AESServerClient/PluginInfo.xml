@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <PluginSettings xmlns="http://axelot.ru/esb/cc/2015/01"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://axelot.ru/esb/cc/2015/01 PluginManifest.xsd ">
-	<dotNET name="openplugins.AESServerClient" targetPlatform="Windows" version="1.0.3.8">
+	<dotNET name="openplugins.AESServerClient" targetPlatform="Windows" version="1.0.3.11">
 		<readme>Сервер и клиент для обмена AES-шифрованными данными</readme>
 		<factories>
 			<factory description="openplugins: REST-сервер приема сообщений"

@@ -9,6 +9,7 @@ using Ceen;
 using Ceen.Httpd;
 using Ceen.Httpd.Handler;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 
 namespace openplugins.AESServerClient
 {
@@ -16,6 +17,7 @@ namespace openplugins.AESServerClient
     {
         private readonly ESB_ConnectionPoints.PluginsInterfaces.ILogger _logger;
         private readonly IMessageFactory _messageFactory;
+        private IMessageHandler _messageHandler;
         private readonly bool _debugMode;
 
         private readonly ServerSettings _serverSettings;
@@ -49,14 +51,15 @@ namespace openplugins.AESServerClient
         {
             ServerConfig _serverConfig;
 
+            _messageHandler = messageHandler;
+
             WriteLogString("Приступаю к инициализации сервера, порт:" + _serverSettings.Port);
-            ct.WaitHandle.WaitOne(60000);
             try
             {
                 _serverConfig = new ServerConfig()
                     .AddLogger(new MainLogger(_logger))
-                    .AddRoute(_serverSettings.Path, new MainHandler(messageHandler, _messageFactory, _encryptTools, _serverSettings.Path))
-                    .AddRoute(_serverSettings.Path + "/*", new RSAHandler(_encryptTools, _serverSettings.Path))
+                    .AddRoute(_serverSettings.Path, new MainHandler(_encryptTools).AddESBHandler(SendMessageToESB))
+                    .AddRoute(_serverSettings.Path + "/*", new RSAHandler(_encryptTools))
                     .AddRoute(new FileHandler("."));
                 _serverConfig.LoadCertificate(_serverSettings.CertFile, _serverSettings.CertPassword);
                 WriteLogString("Инициализация завершена");
@@ -81,6 +84,29 @@ namespace openplugins.AESServerClient
             task.Wait();
         }
 
+        private bool SendMessageToESB(string messageBody, Guid messageId, IDictionary<string, string> headers)
+        {
+            Message message = _messageFactory.CreateMessage("HTTPRequest");
+            foreach (var header in headers)
+            {
+                message.AddPropertyWithValue("HTTP_HEADER_" + header.Key, header.Value);
+                WriteLogString(string.Format("HTTP_HEADER_{0}: {1}", header.Key, header.Value));
+            }
+            message.Body = Encoding.UTF8.GetBytes(messageBody);
+            message.Id = messageId;
+
+            try
+            {
+                _messageHandler.HandleMessage(message);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(messageBody);
+                _logger.Error("Не смог отправить поступившее сообщение в шину!", ex);
+                return false;
+            }
+        }
         private void WriteLogString(string log)
         {
             if (_debugMode)
@@ -91,7 +117,7 @@ namespace openplugins.AESServerClient
     }
     internal class MainLogger : Ceen.IMessageLogger
     {
-        private ESB_ConnectionPoints.PluginsInterfaces.ILogger _logger;
+        private readonly ESB_ConnectionPoints.PluginsInterfaces.ILogger _logger;
         public MainLogger(ESB_ConnectionPoints.PluginsInterfaces.ILogger logger)
         {
             _logger = logger;
@@ -128,21 +154,24 @@ namespace openplugins.AESServerClient
     }
     internal class MainHandler : IHttpModule
     {
-        private readonly IMessageFactory _messageFactory;
-        private readonly IMessageHandler _messageHandler;
         private readonly EncryptTools _encryptTools;
-        private readonly string _mainPath;
         private const int AES_KEY_LENGTH = 16;
 
-        public MainHandler(IMessageHandler messageHandler,
-                           IMessageFactory messageFactory,
-                           EncryptTools encryptTools,
-                           string path)
+        internal Func<string, Guid, IDictionary<string, string>, bool> ESBHandlerDelegate { get; set; }
+        public bool SendMessageToESB(string message, IDictionary<string, string> headers, Guid messageId)
         {
-            _messageFactory = messageFactory;
-            _messageHandler = messageHandler;
+            return ESBHandlerDelegate?.Invoke(message, messageId, headers) ?? true;
+        }
+
+        public MainHandler(EncryptTools encryptTools)
+        {
             _encryptTools = encryptTools;
-            _mainPath = path;
+        }
+
+        public MainHandler AddESBHandler(Func<string, Guid, IDictionary<string, string>, bool> esbHandler)
+        {
+            ESBHandlerDelegate = esbHandler;
+            return this;
         }
 
         private string GetRequestData(IHttpContext context, IHttpRequest request)
@@ -189,139 +218,104 @@ namespace openplugins.AESServerClient
                 return true;
             }
             string body = GetRequestData(context, request);
-            if (request.Path == _mainPath)
+            try
             {
+                JObject incomingMessage = JObject.Parse(body);
+                Guid messageId;
+                bool isJsonError = false;
+                string errorMessage = "";
+                if (!incomingMessage.ContainsKey("file"))
+                {
+                    isJsonError = true;
+                    errorMessage += "Missed mandatory property: file; ";
+                }
+                if (!incomingMessage.ContainsKey("keyhash"))
+                {
+                    isJsonError = true;
+                    errorMessage += "Missed mandatory property: keyhash; ";
+                }
+                if (!incomingMessage.ContainsKey("id"))
+                {
+                    isJsonError = true;
+                    errorMessage += "Missed mandatory property: id; ";
+                }
+                if (isJsonError)
+                {
+                    response.StatusCode = Ceen.HttpStatusCode.BadRequest;
+                    response.StatusMessage = "Missed mandatory property(s)";
+                    await response.WriteAllJsonAsync("{\"error\":\"" + errorMessage + "\"}");
+                    await context.LogInformationAsync(errorMessage);
+                    return true;
+                }
+
                 try
                 {
-                    JObject incomingMessage = JObject.Parse(body);
-                    Guid messageId;
-                    bool isJsonError = false;
-                    string errorMessage = "";
-                    if (!incomingMessage.ContainsKey("file"))
+                    messageId = Guid.Parse((string)incomingMessage["id"]);
+                }
+                catch (Exception ex)
+                {
+                    await context.LogInformationAsync("Некорректный id (" + (string)incomingMessage["id"] + "), сообщению назначен новый.", ex);
+                    messageId = Guid.NewGuid();
+                }
+
+                byte[] encrypted = Convert.FromBase64String((string)incomingMessage["file"]);
+                string decrypted;
+                if ((string)incomingMessage["keyhash"] == "")
+                {
+                    // не шифрованное
+                    decrypted = Encoding.UTF8.GetString(encrypted);
+                }
+                else
+                {
+                    byte[] key = _encryptTools.Decrypt_RSA(Convert.FromBase64String((string)incomingMessage["keyhash"]));
+                    if (key.Length != AES_KEY_LENGTH)
                     {
-                        isJsonError = true;
-                        errorMessage += "Missed mandatory property: file; ";
-                    }
-                    if (!incomingMessage.ContainsKey("keyhash"))
-                    {
-                        isJsonError = true;
-                        errorMessage += "Missed mandatory property: keyhash; ";
-                    }
-                    if (!incomingMessage.ContainsKey("id"))
-                    {
-                        isJsonError = true;
-                        errorMessage += "Missed mandatory property: id; ";
-                    }
-                    if (isJsonError)
-                    {
+                        errorMessage = "Wrong key lenght: " + key.Length;
                         response.StatusCode = Ceen.HttpStatusCode.BadRequest;
-                        response.StatusMessage = "Missed mandatory property(s)";
                         await response.WriteAllJsonAsync("{\"error\":\"" + errorMessage + "\"}");
-                        await context.LogInformationAsync(errorMessage);
+                        await context.LogErrorAsync(
+                            String.Format(
+                                "Некорректная длина AES-ключа после расшифровки: {0}. Требуется {1}",
+                                key.Length,
+                                AES_KEY_LENGTH));
                         return true;
                     }
 
                     try
                     {
-                        messageId = Guid.Parse((string)incomingMessage["id"]);
+                        decrypted = EncryptTools.DecryptStringFromBytes_Aes(encrypted, key);
                     }
                     catch (Exception ex)
                     {
-                        await context.LogInformationAsync("Некорректный id (" + (string)incomingMessage["id"] + "), сообщению назначен новый.", ex);
-                        messageId = Guid.NewGuid();
-                    }
-
-                    byte[] encrypted = Convert.FromBase64String((string)incomingMessage["file"]);
-                    string decrypted;
-                    if ((string)incomingMessage["keyhash"] == "")
-                    {
-                        // не шифрованное
-                        decrypted = Encoding.UTF8.GetString(encrypted);
-                    }
-                    else
-                    {
-                        byte[] key = _encryptTools.Decrypt_RSA(Convert.FromBase64String((string)incomingMessage["keyhash"]));
-                        if (key.Length != AES_KEY_LENGTH)
-                        {
-                            errorMessage = "Wrong key lenght: " + key.Length;
-                            response.StatusCode = Ceen.HttpStatusCode.BadRequest;
-                            await response.WriteAllJsonAsync("{\"error\":\"" + errorMessage + "\"}");
-                            await context.LogErrorAsync(
-                                String.Format(
-                                    "Некорректная длина AES-ключа после расшифровки: {0}. Требуется {1}",
-                                    key.Length,
-                                    AES_KEY_LENGTH));
-                            return true;
-                        }
-
-                        try
-                        {
-                            decrypted = EncryptTools.DecryptStringFromBytes_Aes(encrypted, key);
-                        }
-                        catch (Exception ex)
-                        {
-                            response.StatusCode = Ceen.HttpStatusCode.BadRequest;
-                            await response.WriteAllJsonAsync("{\"decryptionError\":\"" + ex.Message + "\"}");
-                            await context.LogErrorAsync("Ошибка расшифровки входящего сообщения!", ex);
-                            return true;
-                        }
-                    }
-
-                    Message message = _messageFactory.CreateMessage("HTTPRequest");
-                    foreach(var header in request.Headers)
-                    {
-                        message.AddPropertyWithValue("HTTP_HEADER_" + header.Key, header.Value);
-                        await context.LogDebugAsync(string.Format("HTTP_HEADER_{0}: {1}", header.Key, header.Value));
-                    }
-                    message.Body = Encoding.UTF8.GetBytes(decrypted);
-                    message.Id = messageId;
-
-                    int count = 0;
-                    while (count < 5)
-                    {
-                        try
-                        {
-                            _messageHandler.HandleMessage(message);
-                            break;
-                        }
-                        finally
-                        {
-                            count++;
-                        }
-                    }
-                    if (count == 5)
-                    {
-                        await context.LogWarningAsync(decrypted);
-                        await context.LogErrorAsync("Не смог отправить поступившее сообщение в шину!");
+                        response.StatusCode = Ceen.HttpStatusCode.BadRequest;
+                        await response.WriteAllJsonAsync("{\"decryptionError\":\"" + ex.Message + "\"}");
+                        await context.LogErrorAsync("Ошибка расшифровки входящего сообщения!", ex);
+                        return true;
                     }
                 }
-                catch (Exception ex)
+                if (!SendMessageToESB(decrypted, request.Headers, messageId))
                 {
-                    response.StatusCode = Ceen.HttpStatusCode.InternalServerError;
-                    await response.WriteAllJsonAsync("{\"error\":\"" + ex.Message + "\"}");
-                    await context.LogErrorAsync("Ошибка получения сообщения", ex);
+                    response.StatusCode = Ceen.HttpStatusCode.RequestTimeout;
+                    await response.WriteAllJsonAsync("{\"Error\":\"ESB не приняла сообщение\"}");
                 }
-                return true;
             }
-            else
+            catch (Exception ex)
             {
-                response.StatusCode = Ceen.HttpStatusCode.NotFound;
-                await response.WriteAllJsonAsync("{\"error\":\"Функция не поддерживается\"}");
-                await context.LogErrorAsync("Вызов неподдерживаемой функции: " + request.Path);
-                return true;
+                response.StatusCode = Ceen.HttpStatusCode.InternalServerError;
+                await response.WriteAllJsonAsync("{\"error\":\"" + ex.Message + "\"}");
+                await context.LogErrorAsync("Ошибка получения сообщения", ex);
             }
+            return true;
         }
 
     }
     internal class RSAHandler : IHttpModule
     {
         private readonly EncryptTools _encryptTools;
-        private readonly string _mainPath;
 
-        public RSAHandler(EncryptTools encryptTools, string path)
+        public RSAHandler(EncryptTools encryptTools)
         {
             _encryptTools = encryptTools;
-            _mainPath = path;
         }
 
         private string GetRequestData(IHttpContext context, IHttpRequest request)
@@ -367,7 +361,7 @@ namespace openplugins.AESServerClient
                 return true;
             }
             string body = GetRequestData(context, request);
-            if (request.Path == (_mainPath + "/rsaencrypt"))
+            if (request.Path.EndsWith("/rsaencrypt"))
             {
                 try
                 {
@@ -382,7 +376,7 @@ namespace openplugins.AESServerClient
                 }
                 return true;
             }
-            else if (request.Path == (_mainPath + "/rsadecrypt"))
+            else if (request.Path.EndsWith("/rsadecrypt"))
             {
                 try
                 {

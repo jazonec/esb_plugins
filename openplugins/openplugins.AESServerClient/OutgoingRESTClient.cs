@@ -62,8 +62,11 @@ namespace openplugins.AESServerClient
                 Message message = messageSource.PeekLockMessage(ct, 1000);
                 if (message != null)
                 {
-                    JObject o = new JObject();
-                    o["id"] = message.Id.ToString();
+                    JObject o = new JObject
+                    {
+                        ["id"] = message.Id.ToString(),
+                        ["keyhash"] = ""
+                    };
 
                     if (_encode)
                     {
@@ -74,7 +77,6 @@ namespace openplugins.AESServerClient
                     else
                     {
                         o["file"] = Convert.ToBase64String(message.Body);
-                        o["keyhash"] = "";
                     }
                     WriteLogString(o.ToString());
                     try
