@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек коннектора",
+
+  "properties": {
+
+    "debug": {
+      "type": "string",
+      "pattern": "(^true$)|(^false$)",
+      "description": "Признак работы в debug-режиме (логируется всё)"
+    },
+
+    "delay": {
+      "type": "integer",
+      "description": "Задержка между генерацией batch-сообщения"
+    },
+
+    "size": {
+      "type": "integer",
+      "description": "Максимальный размер batch-сообщения"
+    }
+  },
+
+  "required": [ "delay", "size" ]
+}
