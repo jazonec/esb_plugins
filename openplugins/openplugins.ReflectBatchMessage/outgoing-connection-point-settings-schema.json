@@ -10,62 +10,16 @@
       "description": "Признак работы в debug-режиме (логируется всё)"
     },
 
-    "encoding": {
-      "type": "string",
-      "pattern": "(^true$)|(^false$)",
-      "description": "Кодировать исходящее сообщение"
+    "delay": {
+      "type": "integer",
+      "description": "Задержка между генерацией batch-сообщения"
     },
 
-    "endpoint": {
-      "type": "object",
-      "description": "Настройки endpoint, куда отправлять сообщение",
-      "properties": {
-        "url": {
-          "type": "string",
-          "description": "URL для отправки сообщения"
-        },
-        "username": {
-          "type": "string",
-          "description": "Логин"
-        },
-        "password": {
-          "type": "string",
-          "description": "Пароль"
-        }
-      },
-      "required": [ "url", "password", "username" ]
-    },
-
-    "rsa": {
-      "type": "object",
-      "description": "Настройки RSA-шифрования",
-      "properties": {
-        "public": {
-          "type": "object",
-          "description": "Данные public-ключа для шифрования",
-          "properties": {
-            "modulus": {
-              "type": "string",
-              "description": "Раздел modulus из публичного ключа (для работы в nix-системе)"
-            },
-            "xml": {
-              "type": "string",
-              "description": "XML-представление публичного ключа (http://superdry.apphb.com/tools/online-rsa-key-converter для конвертации)"
-            }
-          },
-          "anyOf": [
-            {
-              "required": [ "modulus" ]
-            },
-            {
-              "required": [ "xml" ]
-            }
-          ]
-        }
-      },
-      "required": [ "public" ]
+    "size": {
+      "type": "integer",
+      "description": "Максимальный размер batch-сообщения"
     }
   },
 
-  "required": [ "rsa", "endpoint", "encoding" ]
+  "required": [ "delay", "size" ]
 }
