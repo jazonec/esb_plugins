@@ -3,6 +3,7 @@ using Enyim.Caching.Configuration;
 using Enyim.Caching.Memcached;
 using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
+using StackExchange.Redis;
 using System;
 using System.Text;
 using System.Threading;
@@ -12,7 +13,7 @@ namespace openplugins.ReflectChangedMessage
     internal class MessageReflector : IStandartOutgoingConnectionPoint
     {
         private readonly ILogger _logger;
-        private IMessageFactory _messageFactory;
+        private readonly IMessageFactory _messageFactory;
         private readonly bool _debugMode;
 
         public void Cleanup()
@@ -90,15 +91,22 @@ namespace openplugins.ReflectChangedMessage
     }
     internal class MessageHashChecker : IDisposable
     {
-        MemcachedClient _client;
-        private string messageId;
-        private string type;
+        private readonly MemcachedClient _client;
+
+        private readonly IDatabase _redisDB;
+        private readonly ConnectionMultiplexer _redis;
+
+        private readonly HashCheckerMode _mode;
+
+        private readonly string messageId;
+        private readonly string type;
 
         public string Hash { get; }
 
         public void Dispose()
         {
             _client?.Dispose();
+            _redis?.Dispose();
         }
         public MessageHashChecker(Message message)
         {
@@ -106,24 +114,77 @@ namespace openplugins.ReflectChangedMessage
             type = message.Type;
             Hash = Encoding.UTF8.GetString(message.Body).GetHashCode().ToString();
 
-            MemcachedClientConfiguration memConfig;
-            memConfig = new MemcachedClientConfiguration();
-            memConfig.AddServer("127.0.0.1:11211");
-            _client = new MemcachedClient(memConfig);
+            try
+            {
+                _redis = ConnectionMultiplexer.Connect("localhost");
+                _redisDB = _redis.GetDatabase();
+                _mode = HashCheckerMode.Redis;
+                return;
+            }
+            catch (Exception)
+            {
+                // этого тоже нет
+            }
+
+            try
+            {
+                MemcachedClientConfiguration memConfig;
+                memConfig = new MemcachedClientConfiguration();
+                memConfig.AddServer("localhost:11211");
+                _client = new MemcachedClient(memConfig);
+                _mode = HashCheckerMode.MemCached;
+                return;
+            }
+            catch (Exception)
+            {
+                // этого нет...
+            }
+
+            throw new NotImplementedException("Вариант mongoDB не реализован");
         }
 
         public bool IsChanged()
         {
-            string currentHash = _client.Get<string>(type + messageId);
+            string currentHash = GetCurrentHash();
             return currentHash != Hash;
         }
         public void SaveHash()
         {
-            bool res = _client.Store(StoreMode.Set, type + messageId, Hash);
-            if (!res)
+            SetCurrentHash();
+        }
+        private string GetCurrentHash()
+        {
+            switch (_mode)
             {
-                throw new Exception("Не сохранили хэш");
+                case HashCheckerMode.Redis:
+                    return _redisDB.StringGet(type + messageId);
+                case HashCheckerMode.MemCached:
+                    return _client.Get<string>(type + messageId);
+                case HashCheckerMode.MongoDB:
+                    throw new NotImplementedException();
+            }
+            return null;
+        }
+        private void SetCurrentHash()
+        {
+            switch (_mode)
+            {
+                case HashCheckerMode.Redis:
+                    _redisDB.StringSet(type + messageId, Hash);
+                    break;
+                case HashCheckerMode.MemCached:
+                    _client.Store(StoreMode.Set, type + messageId, Hash);
+                    break;
+                case HashCheckerMode.MongoDB:
+                    throw new NotImplementedException();
             }
         }
+    }
+
+    internal enum HashCheckerMode
+    {
+        MemCached,
+        Redis,
+        MongoDB
     }
 }
