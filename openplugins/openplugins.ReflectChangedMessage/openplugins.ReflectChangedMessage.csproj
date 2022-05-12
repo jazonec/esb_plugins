@@ -106,6 +106,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MessageHashCheckerMemcached.cs" />
+    <Compile Include="MessageHashCheckerRedis.cs" />
+    <Compile Include="MessageHashCheckerMongoDB.cs" />
+    <Compile Include="MessageHashChecker.cs" />
     <Compile Include="MessageReflector.cs" />
     <Compile Include="OutgoingConnectionPointFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
