@@ -10,7 +10,7 @@ namespace openplugins.ReflectChangedMessage
     {
         private readonly MongoClient _mongo;
         private readonly IMongoDatabase _mongoDB;
-        IMongoCollection<MessageHashMongo> _hashCollection;
+        private IMongoCollection<MessageHashMongo> _hashCollection;
         private readonly string _collectionPostfix;
 
         public MessageHashCheckerMongoDB(
@@ -27,7 +27,7 @@ namespace openplugins.ReflectChangedMessage
             _hashCollection = _mongoDB.GetCollection<MessageHashMongo>(type + _collectionPostfix);
             try
             {
-                MessageHashMongo ff = _hashCollection.Find(x => x.Id == messageId).Single();
+                MessageHashMongo ff = _hashCollection.FindSync(x => x.Id == messageId).Single();
                 return ff.Hash;
             }
             catch
@@ -38,9 +38,9 @@ namespace openplugins.ReflectChangedMessage
         public override void SetCurrentHash()
         {
             _hashCollection = _mongoDB.GetCollection<MessageHashMongo>(type + _collectionPostfix);
-            _hashCollection.ReplaceOne(
+            var result = _hashCollection.UpdateOne(
                 x => x.Id == messageId,
-                new MessageHashMongo(messageId, type, Hash),
+                Builders<MessageHashMongo>.Update.Set(u => u.Hash, Hash),
                 new UpdateOptions() { IsUpsert = true});
         }
     }

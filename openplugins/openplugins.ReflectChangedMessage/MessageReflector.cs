@@ -1,6 +1,4 @@
 ﻿using ESB_ConnectionPoints.PluginsInterfaces;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Threading;
@@ -79,12 +77,6 @@ namespace openplugins.ReflectChangedMessage
 
         public void Run(IMessageSource messageSource, IMessageReplyHandler replyHandler, CancellationToken ct)
         {
-            /*if (_debugMode)
-            {
-                WriteLogString("One minute pause...");
-                ct.WaitHandle.WaitOne(60000);
-            }*/
-
             _logger.Info(string.Format("Приступил к работе {0}", DateTime.Now.ToString()));
             _logger.Info(string.Format("Режим хранения HASH: {0}", _mode.ToString()));
             while (!ct.IsCancellationRequested)
