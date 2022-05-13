@@ -15,7 +15,7 @@
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Windows|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -35,7 +35,7 @@
   <PropertyGroup>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Windows|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x64\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -49,6 +49,26 @@
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Linux|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Linux\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <DocumentationFile>
+    </DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Linux|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x64\Linux\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
@@ -189,9 +209,11 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>powershell Compress-Archive -Path '$(TargetDir)*.dll', '$(TargetDir)*.pdb', '$(TargetDir)*.xml', '$(TargetDir)*.json' -DestinationPath '$(SolutionDir)plugins\$(ProjectName).zip' -Force</PostBuildEvent>
+    <PostBuildEvent>powershell if ('$(ConfigurationName)' -eq 'Linux') {Remove-Item  '$(TargetDir)mongo*.*'; Copy-Item '$(SolutionDir)packages\MongoDB.Bson.signed.2.4.4\lib\netstandard1.5\*.*' -Destination '$(TargetDir)'; Copy-Item '$(SolutionDir)packages\MongoDB.Driver.Core.signed.2.4.4\lib\netstandard1.5\*.*' -Destination '$(TargetDir)'; Copy-Item '$(SolutionDir)packages\MongoDB.Driver.signed.2.4.4\lib\netstandard1.5\*.*' -Destination '$(TargetDir)';}
+powershell Compress-Archive -Path '$(TargetDir)*.dll', '$(TargetDir)*.pdb', '$(TargetDir)*.xml', '$(TargetDir)*.json' -DestinationPath '$(SolutionDir)plugins\$(ProjectName)_$(ConfigurationName).zip' -Force
+</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>powershell [xml]$plugininfo = Get-Content '$(ProjectDir)PluginInfo.xml'; $version = $plugininfo.PluginSettings.dotNET.version -split '\.'; $version[3] = [int]$version[3]+1; $plugininfo.PluginSettings.dotNET.version = $version -Join '.'; $plugininfo.Save('$(ProjectDir)PluginInfo.xml');</PreBuildEvent>
+    <PreBuildEvent>powershell [xml]$plugininfo = Get-Content '$(ProjectDir)PluginInfo.xml'; $version = $plugininfo.PluginSettings.dotNET.version -split '\.'; $version[3] = [int]$version[3]+1; $plugininfo.PluginSettings.dotNET.version = $version -Join '.'; $plugininfo.PluginSettings.dotNET.targetPlatform = '$(ConfigurationName)'; $plugininfo.Save('$(ProjectDir)PluginInfo.xml');</PreBuildEvent>
   </PropertyGroup>
 </Project>
