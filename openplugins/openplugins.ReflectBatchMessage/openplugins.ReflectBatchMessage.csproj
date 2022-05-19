@@ -75,4 +75,7 @@
   <PropertyGroup>
     <PostBuildEvent>powershell Compress-Archive -Path '$(TargetDir)*.dll', '$(TargetDir)*.pdb', '$(TargetDir)*.xml', '$(TargetDir)*.json' -DestinationPath '$(SolutionDir)plugins\$(ProjectName).zip' -Force</PostBuildEvent>
   </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>powershell [xml]$plugininfo = Get-Content '$(ProjectDir)PluginInfo.xml'; $version = $plugininfo.PluginSettings.dotNET.version -split '\.'; $version[3] = [int]$version[3]+1; $plugininfo.PluginSettings.dotNET.version = $version -Join '.'; $plugininfo.PluginSettings.dotNET.targetPlatform = 'Windows'; $plugininfo.Save('$(ProjectDir)PluginInfo.xml');</PreBuildEvent>
+  </PropertyGroup>
 </Project>
