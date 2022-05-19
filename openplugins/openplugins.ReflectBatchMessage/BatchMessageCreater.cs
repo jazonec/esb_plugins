@@ -21,6 +21,8 @@ namespace openplugins.ReflectBatchMessage
         private readonly HashSet<Guid> _processedMessages = new HashSet<Guid>();
         private readonly int _maxBatchSize;
 
+        private readonly string _batchMessageType;
+
         public void Cleanup()
         {
         }
@@ -41,6 +43,7 @@ namespace openplugins.ReflectBatchMessage
             _debugMode = (bool)settings["debug"];
             _delayMinutes = (int)settings["delay"] != 0 ? (int)settings["delay"] : 1;
             _maxBatchSize = (int)settings["size"] != 0 ? (int)settings["size"] : 1000;
+            _batchMessageType = (string)settings["type"] ?? "BatchMessage";
         }
 
         public void Run(IMessageSource messageSource, IMessageReplyHandler replyHandler, CancellationToken ct)
@@ -67,9 +70,9 @@ namespace openplugins.ReflectBatchMessage
                 while (true)
                 {
                     Message message = messageSource.PeekLockMessage(ct, 1000);
-                    if (message == null || _processedMessages.Count == _maxBatchSize)
+                    if (message == null)
                     {
-                        // выбрали всё из очереди или уткнулись в лимит
+                        // выбрали всё из очереди
                         break;
                     }
                     if (_processedMessages.Contains(message.Id))
@@ -77,8 +80,20 @@ namespace openplugins.ReflectBatchMessage
                         WriteLogString(string.Format("Повторная блокировка сообщения <{0}>", message.Id));
                         continue;
                     }
-                    _batchMessage.AddMessage(message);
-                    _processedMessages.Add(message.Id);
+                    try
+                    {
+                        _batchMessage.AddMessage(message);
+                    }catch (Exception ex)
+                    {
+                        messageSource.CompletePeekLock(message.Id, MessageHandlingError.InvalidMessageFormat, ex.Message);
+                        continue;
+                    }
+                    _ = _processedMessages.Add(message.Id);
+                    if (_processedMessages.Count == _maxBatchSize)
+                    {
+                        // уткнулись в лимит
+                        SendBatchMessageToESB(messageSource, replyHandler, ct);
+                    }
                 }
 
                 if (_processedMessages.Count == 0)
@@ -88,41 +103,45 @@ namespace openplugins.ReflectBatchMessage
                     continue;
                 }
 
-                WriteLogString(string.Format("Количество: _processedMessages.Count={0}", _processedMessages.Count));
-
-                Message newMessage = _messageFactory.CreateMessage("BatchMessage");
-                newMessage.Body = Encoding.UTF8.GetBytes(_batchMessage.DoSerialize());
-
-                try
-                {
-                    while (!ct.IsCancellationRequested)
-                    {
-                        if (replyHandler.HandleReplyMessage(newMessage))
-                        {
-                            break;
-                        }
-                        ct.WaitHandle.WaitOne(TimeSpan.FromSeconds(1));
-                    }
-                }
-                catch (MessageHandlingException ex)
-                {
-                    _logger.Error(string.Format("Возникла ошибка при обработке ответного сообщения {0}", newMessage), ex);
-                }
-
-                // подтвердим сообщения в очереди
-                foreach (Guid _id in _processedMessages)
-                {
-                    messageSource.CompletePeekLock(_id);
-                }
-
-                // зачистим
-                _batchMessage.Clear();
-                _processedMessages.Clear();
+                // отправим кусок, который не добрался до лимита
+                SendBatchMessageToESB(messageSource, replyHandler, ct);
 
                 ct.WaitHandle.WaitOne(skipOneMinute);
             }
         }
+        private void SendBatchMessageToESB(IMessageSource messageSource, IMessageReplyHandler replyHandler, CancellationToken ct)
+        {
+            WriteLogString(string.Format("Количество: _processedMessages.Count={0}", _processedMessages.Count));
 
+            Message newMessage = _messageFactory.CreateMessage(_batchMessageType);
+            newMessage.Body = Encoding.UTF8.GetBytes(_batchMessage.DoSerialize());
+
+            try
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    if (replyHandler.HandleReplyMessage(newMessage))
+                    {
+                        break;
+                    }
+                    ct.WaitHandle.WaitOne(TimeSpan.FromSeconds(1));
+                }
+            }
+            catch (MessageHandlingException ex)
+            {
+                _logger.Error(string.Format("Возникла ошибка при обработке ответного сообщения {0}", newMessage), ex);
+            }
+
+            // подтвердим сообщения в очереди
+            foreach (Guid _id in _processedMessages)
+            {
+                messageSource.CompletePeekLock(_id);
+            }
+
+            // зачистим
+            _batchMessage.Clear();
+            _processedMessages.Clear();
+        }
         private void WriteLogString(string log)
         {
             if (_debugMode)
@@ -148,6 +167,8 @@ namespace openplugins.ReflectBatchMessage
 
         public void AddMessage(Message mes)
         {
+            // если не распарсим XML - упадем и бросим вверх ошибку
+            _ = XElement.Parse(Encoding.UTF8.GetString(mes.Body));
             BatchMessageType messagesArray;
             if (!typesOffset.TryGetValue(mes.Type, out int typeOffset))
             {
