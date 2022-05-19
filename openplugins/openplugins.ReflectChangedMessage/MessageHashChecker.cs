@@ -1,5 +1,6 @@
 ﻿using ESB_ConnectionPoints.PluginsInterfaces;
 using System;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace openplugins.ReflectChangedMessage
@@ -18,7 +19,8 @@ namespace openplugins.ReflectChangedMessage
         {
             messageId = message.GetPropertyValue<string>("Id");
             type = message.Type;
-            Hash = Encoding.UTF8.GetString(message.Body).GetHashCode().ToString();
+            byte[] tmpHash = new MD5CryptoServiceProvider().ComputeHash(message.Body);
+            Hash = Convert.ToBase64String(tmpHash);
         }
         public bool IsChanged()
         {
