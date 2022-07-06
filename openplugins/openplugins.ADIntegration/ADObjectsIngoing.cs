@@ -77,7 +77,8 @@ namespace openplugins.ADIntegration
         private void SendADUsersToESB(IMessageHandler messageHandler, CancellationToken ct)
         {
             DirectoryEntry de = new DirectoryEntry(_adPath, _adUser, _adPwd);
-            DirectorySearcher ds = new DirectorySearcher(de, "(&(objectCategory=User)(objectClass=person))", _adFields);
+            //DirectorySearcher ds = new DirectorySearcher(de, "(&(objectCategory=User)(objectClass=person))", _adFields);
+            DirectorySearcher ds = new DirectorySearcher(de, "(&(objectCategory=User)(objectClass=person))");
             ds.PageSize = 400;
 
             SearchResultCollection results = ds.FindAll();
