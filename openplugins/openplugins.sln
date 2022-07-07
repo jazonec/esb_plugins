@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.ReflectBatchMes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.ReflectChangedMessage", "openplugins.ReflectChangedMessage\openplugins.ReflectChangedMessage.csproj", "{2F9555B8-EB15-4728-A6D4-54553825A58B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.ActiveMQ", "openplugins.ActiveMQ\openplugins.ActiveMQ.csproj", "{E3F86263-A2AD-4440-B9F7-BBA29EFFA182}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,6 +31,12 @@ Global
 		{2F9555B8-EB15-4728-A6D4-54553825A58B}.Linux|Any CPU.ActiveCfg = Linux|Any CPU
 		{2F9555B8-EB15-4728-A6D4-54553825A58B}.Linux|Any CPU.Build.0 = Linux|Any CPU
 		{2F9555B8-EB15-4728-A6D4-54553825A58B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3F86263-A2AD-4440-B9F7-BBA29EFFA182}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3F86263-A2AD-4440-B9F7-BBA29EFFA182}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3F86263-A2AD-4440-B9F7-BBA29EFFA182}.Linux|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3F86263-A2AD-4440-B9F7-BBA29EFFA182}.Linux|Any CPU.Build.0 = Debug|Any CPU
+		{E3F86263-A2AD-4440-B9F7-BBA29EFFA182}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3F86263-A2AD-4440-B9F7-BBA29EFFA182}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
