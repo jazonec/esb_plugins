@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.DirectoryServices;
+using System.DirectoryServices.AccountManagement;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
@@ -32,7 +33,8 @@ namespace openplugins.ADIntegration
             _adUser = (string)settings["user"];
             _adPwd = (string)settings["password"];
             _adPath = (string)settings["path"];
-            string fields = "objectSid,objectGuid," + (string)settings["fields"];
+            //string fields = "objectSid,objectGuid," + (string)settings["fields"];
+            string fields = (string)settings["fields"];
             _adFields = fields.Split(',');
             _delayMinutes = (int)settings["delay"] != 0 ? (int)settings["delay"] : 3600;
         }
@@ -76,7 +78,7 @@ namespace openplugins.ADIntegration
 
         private void SendADUsersToESB(IMessageHandler messageHandler, CancellationToken ct)
         {
-            DirectoryEntry de = new DirectoryEntry(_adPath, _adUser, _adPwd);
+            DirectoryEntry de = new DirectoryEntry("LDAP://" + _adPath, _adUser, _adPwd);
             //DirectorySearcher ds = new DirectorySearcher(de, "(&(objectCategory=User)(objectClass=person))", _adFields);
             DirectorySearcher ds = new DirectorySearcher(de, "(&(objectCategory=User)(objectClass=person))");
             ds.PageSize = 400;
@@ -85,6 +87,20 @@ namespace openplugins.ADIntegration
 
             foreach (SearchResult sr in results)
             {
+                if (sr.Properties["samAccountName"].Count == 0) continue;
+
+                JObject _mesObj = new JObject();
+
+                using (PrincipalContext context = new PrincipalContext(ContextType.Domain, _adPath, _adUser, _adPwd))
+                {
+                    UserPrincipal user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, sr.Properties["samAccountName"][0].ToString());
+                    _mesObj.Add("sid", user.Sid.ToString());
+                    _mesObj.Add("guid", user.Guid.ToString());
+                    _mesObj.Add("enabled", user.Enabled);
+                    //
+                }
+
+                /*
                 string sidStr;
                 string uuidStr;
 
@@ -109,11 +125,11 @@ namespace openplugins.ADIntegration
                     byte[] uuid = (byte[])sr.Properties["objectGuid"][0];
                     uuidStr = new Guid(uuid).ToString();
                 }
+                */
 
-                JObject _mesObj = new JObject();
                 foreach (string key in _adFields)
                 {
-                    if (key == "objectSid")
+                    /*if (key == "objectSid")
                     {
                         _mesObj.Add("sid", sidStr);
                         continue;
@@ -121,7 +137,7 @@ namespace openplugins.ADIntegration
                     if (key == "objectGuid") {
                         _mesObj.Add("guid", uuidStr);
                         continue;
-                    }
+                    }*/
                     _mesObj.Add(key, sr.Properties[key].Count == 0 ? "" : sr.Properties[key][0].ToString());
                 }
 
