@@ -31,6 +31,7 @@ namespace openplugins.ADIntegration
 
         private readonly string[] _adGroupFields;
         private readonly bool _groupWithMembers;
+        private readonly bool _fullinfo;
 
         public ADObjectsIngoing(JObject settings, IServiceLocator serviceLocator)
         {
@@ -46,13 +47,14 @@ namespace openplugins.ADIntegration
             _adPath = (string)settings["path"];
             _de = new DirectoryEntry("LDAP://" + _adPath, _adUser, _adPwd);
 
-            string userFields = "objectSid,objectGuid,useraccountcontrol," + (string)settings["userfields"];
+            string userFields = "objectSid,objectGuid,whenchanged,useraccountcontrol," + (string)settings["userfields"];
             _adUserFields = userFields.Split(',');
             _usersWithGroups = (bool)settings["addgroupstouser"];
 
-            string groupFields = (string)settings["groupfields"];
+            string groupFields = "whenchanged," + (string)settings["groupfields"];
             _adGroupFields = groupFields.Split(',');
             _groupWithMembers = (bool)settings["addmemberstogroups"];
+            _fullinfo = (bool)settings["fullmembersinfo"];
 
             _delayMinutes = (int)settings["delay"] != 0 ? (int)settings["delay"] : 3600;
         }
@@ -118,42 +120,16 @@ namespace openplugins.ADIntegration
                         return; // выходим если шина пытается остановить адаптер
                     }
 
-                    JObject _mesObj = new JObject
-                    {
-                        { "guid", GetAdObjectGuid(sr) },
-                        { "sid", GetAdObjectSid(sr) },
-                        { "whenchanged", ((DateTime)sr.Properties["whenChanged"][0]).ToString("s") }
-                    };
-
-                    foreach (string key in _adGroupFields)
-                    {
-                        if (key == "objectSid" || key == "objectGuid" || key == "whenChanged")
-                        {
-                            continue;
-                        }
-                        _mesObj.Add(key, sr.Properties[key].Count == 0 ? "" : sr.Properties[key][0].ToString());
-                    }
+                    JObject objectToSend = GetObjectToSend(sr, _adGroupFields);
 
                     if (_groupWithMembers)
                     {
-                        _mesObj.Add("members", GetGroupsMembers(sr.GetDirectoryEntry()));
+                        objectToSend.Add("members", GetGroupMembers(sr.GetDirectoryEntry()));
                     }
 
-                    SendToESB(_mesObj, "ADGroup", messageHandler, ct);
+                    SendToESB(objectToSend, "ADGroup", messageHandler, ct);
                 }
             }
-        }
-
-        private JObject GetGroupsMembers(DirectoryEntry objGroupEntry)
-        {
-            JArray _member = new JArray();
-            JObject _members = new JObject();
-            foreach (object objMember in objGroupEntry.Properties["member"])
-            {
-                _member.Add(objMember.ToString());
-            }
-            _members.Add("member", _member);
-            return _members;
         }
 
         private void SendADUsersToESB(IMessageHandler messageHandler, CancellationToken ct)
@@ -179,33 +155,77 @@ namespace openplugins.ADIntegration
                         continue; // неполноценный объект в домене? Пусть админы посмотрят
                     }
 
-                    JObject _mesObj = new JObject
-                    {
-                        { "sid", GetAdObjectSid(sr) },
-                        { "guid", GetAdObjectGuid(sr) },
-                        { "enabled", !Convert.ToBoolean((int)sr.Properties["useraccountcontrol"][0] & 0x0002) },
-                        { "whenchanged", ((DateTime)sr.Properties["whenChanged"][0]).ToString("s") }
-                    };
-
-                    foreach (string key in _adUserFields)
-                    {
-                        if (key == "objectSid" || key == "objectGuid" || key == "userAccountСontrol" || key == "whenChanged")
-                        {
-                            continue;
-                        }
-                        _mesObj.Add(key, sr.Properties[key].Count == 0 ? "" : sr.Properties[key][0].ToString());
-                    }
+                    JObject objectToSend = GetObjectToSend(sr, _adUserFields);
 
                     if (_usersWithGroups)
                     {
                         JObject _groups = GetUserGroups(sr.Properties["samAccountName"][0].ToString(), ct);
-                        _mesObj.Add("groups", _groups);
+                        objectToSend.Add("groups", _groups);
                     }
 
-                    SendToESB(_mesObj, "ADUser", messageHandler, ct);
+                    SendToESB(objectToSend, "ADUser", messageHandler, ct);
 
                 }
             }
+        }
+
+        private JObject GetObjectToSend(SearchResult sr, string[] adFields)
+        {
+            JObject _resultObject = new JObject
+                    {
+                        { "guid", GetAdObjectGuid(sr) },
+                        { "sid", GetAdObjectSid(sr) },
+                        { "whenchanged", ((DateTime)sr.Properties["whenChanged"][0]).ToString("s") }
+                    };
+
+            foreach (string key in adFields)
+            {
+                if (key == "objectSid" || key == "objectGuid" || key == "whenchanged")
+                {
+                    continue;
+                }
+                if (key == "useraccountcontrol")
+                {
+                    _resultObject.Add("enabled", !Convert.ToBoolean((int)sr.Properties["useraccountcontrol"][0] & 0x0002));
+                    continue;
+                }
+                _resultObject.Add(key, sr.Properties[key].Count == 0 ? "" : sr.Properties[key][0].ToString());
+            }
+            return _resultObject;
+        }
+
+        private JObject GetGroupMembers(DirectoryEntry objGroupEntry)
+        {
+            JArray _member = new JArray();
+            JObject _members = new JObject();
+            foreach (object objMember in objGroupEntry.Properties["member"])
+            {
+                if (_fullinfo)
+                {
+                    var _localDe = new DirectoryEntry("LDAP://" + _adPath + "/" + objMember.ToString(), _adUser, _adPwd);
+                    using (DirectorySearcher ds = new DirectorySearcher(_localDe)
+                    {
+                        Filter = "(&" +
+                            "(objectCategory=User)(objectClass=person)" +
+                            //"(distinguishedName=" + objMember.ToString() + ")" +
+                        ")"
+                    })
+                    {
+                        SearchResult res = ds.FindOne();
+                        if (res != null)
+                        {
+                            JObject _line = GetObjectToSend(res, adFields: new string[] { "name" });
+                            _member.Add(_line);
+                        }
+                    }
+                }
+                else
+                {
+                    _member.Add(objMember.ToString());
+                }
+            }
+            _members.Add("member", _member);
+            return _members;
         }
 
         private string GetAdObjectGuid(SearchResult sr)
