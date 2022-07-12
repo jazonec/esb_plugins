@@ -115,6 +115,8 @@ namespace openplugins.ReflectChangedMessage
             _responseMessage.Body = message.Body;
             _responseMessage.ClassId = message.ClassId;
             _responseMessage.SetPropertyWithValue("originalId", message.Id.ToString());
+            _responseMessage.SetPropertyWithValue("originalSource", message.Source);
+            _responseMessage.SetPropertyWithValue("originalType", message.Type);
             while (!replyHandler.HandleReplyMessage(_responseMessage))
             {
                 ct.WaitHandle.WaitOne(500);
