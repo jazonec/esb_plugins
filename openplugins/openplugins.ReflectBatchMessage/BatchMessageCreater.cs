@@ -11,7 +11,7 @@ namespace openplugins.ReflectBatchMessage
     internal class BatchMessageCreater : IStandartOutgoingConnectionPoint
     {
         private readonly ILogger _logger;
-        private IMessageFactory _messageFactory;
+        private readonly IMessageFactory _messageFactory;
         private readonly bool _debugMode;
 
         private readonly int _delayMinutes;
