@@ -28,10 +28,12 @@ namespace openplugins.ADIntegration
 
         private readonly string[] _adUserFields;
         private readonly bool _usersWithGroups;
+        private readonly string _userClassId;
 
         private readonly string[] _adGroupFields;
         private readonly bool _groupWithMembers;
         private readonly bool _fullinfo;
+        private readonly string _groupClassId;
 
         public ADObjectsIngoing(JObject settings, IServiceLocator serviceLocator)
         {
@@ -50,11 +52,13 @@ namespace openplugins.ADIntegration
             string userFields = "objectSid,objectGuid,whenchanged,useraccountcontrol," + (string)settings["userfields"];
             _adUserFields = userFields.Split(',');
             _usersWithGroups = (bool)settings["addgroupstouser"];
+            _userClassId = (string)settings["userclassid"];
 
             string groupFields = "whenchanged," + (string)settings["groupfields"];
             _adGroupFields = groupFields.Split(',');
             _groupWithMembers = (bool)settings["addmemberstogroups"];
             _fullinfo = (bool)settings["fullmembersinfo"];
+            _groupClassId = (string)settings["groupclassid"];
 
             _delayMinutes = (int)settings["delay"] != 0 ? (int)settings["delay"] : 3600;
         }
@@ -127,14 +131,14 @@ namespace openplugins.ADIntegration
                         objectToSend.Add("members", GetGroupMembers(sr.GetDirectoryEntry()));
                     }
 
-                    SendToESB(objectToSend, "ADGroup", messageHandler, ct);
+                    SendToESB(objectToSend, "ADGroup", _groupClassId, messageHandler, ct);
                 }
             }
         }
 
         private void SendADUsersToESB(IMessageHandler messageHandler, CancellationToken ct)
         {
-            using (DirectorySearcher ds = new DirectorySearcher(_de, "(&(objectCategory=User)(objectClass=person))", _adUserFields))
+            using (DirectorySearcher ds = new DirectorySearcher(_de, "(&(objectCategory=person)(objectClass=user))", _adUserFields))
             {
                 ds.PageSize = 400;
                 SearchResultCollection results = ds.FindAll();
@@ -163,7 +167,7 @@ namespace openplugins.ADIntegration
                         objectToSend.Add("groups", _groups);
                     }
 
-                    SendToESB(objectToSend, "ADUser", messageHandler, ct);
+                    SendToESB(objectToSend, "ADUser", _userClassId, messageHandler, ct);
 
                 }
             }
@@ -273,9 +277,10 @@ namespace openplugins.ADIntegration
             return _groups;
         }
 
-        private void SendToESB(JObject objectToSend, string objectType, IMessageHandler messageHandler, CancellationToken ct)
+        private void SendToESB(JObject objectToSend, string objectType, string classId, IMessageHandler messageHandler, CancellationToken ct)
         {
             Message mes = _messageFactory.CreateMessage(objectType);
+            mes.ClassId = classId;
             mes.Body = Encoding.UTF8.GetBytes(objectToSend.ToString());
             while (true)
             {
