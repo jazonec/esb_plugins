@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <PluginSettings xmlns="http://axelot.ru/esb/cc/2015/01" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://axelot.ru/esb/cc/2015/01 PluginManifest.xsd ">
-  <dotNET name="openplugins.ADIntegration" targetPlatform="Windows" version="1.0.2.2">
+  <dotNET name="openplugins.ADIntegration" targetPlatform="Windows" version="1.0.2.7">
     <readme>Интеграция с каталогом AD</readme>
     <factories>
       <factory description="openplugins: Получение из AD новых записей" name="openplugins.ADIntegration.IngoingConnectionPointFactory, openplugins.ADIntegration" type="Ingoing">
