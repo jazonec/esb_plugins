@@ -34,6 +34,7 @@ namespace openplugins.ADIntegration
         private readonly bool _groupWithMembers;
         private readonly bool _fullinfo;
         private readonly string _groupClassId;
+        private readonly string _groupFilter;
 
         public ADObjectsIngoing(JObject settings, IServiceLocator serviceLocator)
         {
@@ -49,16 +50,17 @@ namespace openplugins.ADIntegration
             _adPath = (string)settings["path"];
             _de = new DirectoryEntry("LDAP://" + _adPath, _adUser, _adPwd);
 
-            string userFields = "objectSid,objectGuid,whenchanged,useraccountcontrol," + (string)settings["userfields"];
+            string userFields = "objectSid,objectGuid,whenChanged,whenCreated,useraccountcontrol," + (string)settings["userfields"];
             _adUserFields = userFields.Split(',');
             _usersWithGroups = (bool)settings["addgroupstouser"];
             _userClassId = (string)settings["userclassid"];
 
-            string groupFields = "whenchanged," + (string)settings["groupfields"];
+            string groupFields = "whenChanged,whenCreated," + (string)settings["groupfields"];
             _adGroupFields = groupFields.Split(',');
             _groupWithMembers = (bool)settings["addmemberstogroups"];
             _fullinfo = (bool)settings["fullmembersinfo"];
             _groupClassId = (string)settings["groupclassid"];
+            _groupFilter = (string)settings["groupfilter"];
 
             _delayMinutes = (int)settings["delay"] != 0 ? (int)settings["delay"] : 3600;
         }
@@ -111,7 +113,7 @@ namespace openplugins.ADIntegration
 
         private void SendADGroupsToESB(IMessageHandler messageHandler, CancellationToken ct)
         {
-            using (DirectorySearcher ds = new DirectorySearcher(_de, "(&(objectCategory=group))"))
+            using (DirectorySearcher ds = new DirectorySearcher(_de, _groupFilter))
             {
                 ds.PageSize = 400;
 
@@ -178,22 +180,32 @@ namespace openplugins.ADIntegration
             JObject _resultObject = new JObject
                     {
                         { "guid", GetAdObjectGuid(sr) },
-                        { "sid", GetAdObjectSid(sr) },
-                        { "whenchanged", ((DateTime)sr.Properties["whenChanged"][0]).ToString("s") }
+                        { "sid", GetAdObjectSid(sr) }
                     };
 
             foreach (string key in adFields)
             {
-                if (key == "objectSid" || key == "objectGuid" || key == "whenchanged")
+                switch (key)
                 {
-                    continue;
+                    case "objectSid":
+                    case "objectGuid":
+                        break;
+                    case "useraccountcontrol":
+                        _resultObject.Add("enabled", !Convert.ToBoolean((int)sr.Properties["useraccountcontrol"][0] & 0x0002));
+                        break;
+                    case "whenChanged":
+                    case "whenCreated":
+                        // date fields
+                        _resultObject.Add(key.ToLower(), sr.Properties[key].Count == 0 ? "" : ((DateTime)sr.Properties[key][0]).ToString("s"));
+                        break;
+                    case "lastLogon":
+                        var lastLogonTime = DateTime.FromFileTime(sr.Properties[key].Count == 0 ? 0 : ((long)sr.Properties[key][0]));
+                        _resultObject.Add(key.ToLower(), lastLogonTime.ToString("s"));
+                        break;
+                    default:
+                        _resultObject.Add(key.ToLower(), sr.Properties[key].Count == 0 ? "" : sr.Properties[key][0].ToString());
+                        break;
                 }
-                if (key == "useraccountcontrol")
-                {
-                    _resultObject.Add("enabled", !Convert.ToBoolean((int)sr.Properties["useraccountcontrol"][0] & 0x0002));
-                    continue;
-                }
-                _resultObject.Add(key, sr.Properties[key].Count == 0 ? "" : sr.Properties[key][0].ToString());
             }
             return _resultObject;
         }
