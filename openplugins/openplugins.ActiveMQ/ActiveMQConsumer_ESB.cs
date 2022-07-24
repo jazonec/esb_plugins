@@ -48,7 +48,7 @@ namespace openplugins.ActiveMQ
             }
 
             WriteLogString("Приступаю к инициализации подписчика к очереди " + _queueName);
-            using (TopicConsumer topicConsumer = new TopicConsumer(_queueName, _host, _login, _password, "ActiveMQConsumer_ESB", "ActiveMQConsumer_ESB"))
+            using (TopicConsumer topicConsumer = new TopicConsumer(_queueName, _host, _login, _password, "ActiveMQConsumer_ESB"))
             {
                 topicConsumer.OnMessageReceived += new MessageReceivedDelegate(SendMessagetoESB);
                 WriteLogString("Подписчик инициализиолван");
