@@ -55,9 +55,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActiveMQConsumer_ESB.cs" />
+    <Compile Include="IngoingConnectionPointFactory.cs" />
     <Compile Include="OutgoingActiveMQClient.cs" />
     <Compile Include="OutgoingConnectionPointFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TopicConsumer.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="PluginInfo.xml">
