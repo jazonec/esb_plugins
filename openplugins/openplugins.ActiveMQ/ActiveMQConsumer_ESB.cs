@@ -65,32 +65,49 @@ namespace openplugins.ActiveMQ
         private void SendMessagetoESB(Apache.NMS.ITextMessage amqMessage)
         {
             WriteLogString("Получено сообщение: " + amqMessage.Text);
-            Message esbMessage = _messageFactory.CreateMessage("AMQ_message");
-            esbMessage.Body = Encoding.UTF8.GetBytes(amqMessage.Text);
-            esbMessage.SetPropertyWithValue("NMSType", amqMessage.NMSType.ToString());
-            esbMessage.SetPropertyWithValue("NMSTimeToLive", amqMessage.NMSTimeToLive.ToString());
-            esbMessage.SetPropertyWithValue("NMSMessageId", amqMessage.NMSMessageId.ToString());
-            esbMessage.SetPropertyWithValue("NMSTimestamp", amqMessage.NMSTimestamp.ToString());
-            esbMessage.SetPropertyWithValue("NMSRedelivered", amqMessage.NMSRedelivered.ToString());
-            esbMessage.SetPropertyWithValue("NMSPriority", amqMessage.NMSPriority.ToString());
-            esbMessage.SetPropertyWithValue("NMSDestination", amqMessage.NMSDestination.ToString());
-            esbMessage.SetPropertyWithValue("NMSDeliveryMode", amqMessage.NMSDeliveryMode.ToString());
-            esbMessage.SetPropertyWithValue("NMSCorrelationID", amqMessage.NMSCorrelationID.ToString());
 
-            foreach(string amqMessagePropertyKey in amqMessage.Properties.Keys)
+            Message esbMessage = _messageFactory.CreateMessage("AMQ_message");
+            try
             {
-                esbMessage.SetPropertyWithValue("prop_" + amqMessagePropertyKey, amqMessage.Properties[amqMessagePropertyKey]);
+                esbMessage.Body = Encoding.UTF8.GetBytes(amqMessage.Text);
+                esbMessage.SetPropertyWithValue("NMSType", amqMessage.NMSType.ToString());
+                esbMessage.SetPropertyWithValue("NMSTimeToLive", amqMessage.NMSTimeToLive.ToString());
+                esbMessage.SetPropertyWithValue("NMSMessageId", amqMessage.NMSMessageId.ToString());
+                esbMessage.SetPropertyWithValue("NMSTimestamp", amqMessage.NMSTimestamp.ToString());
+                esbMessage.SetPropertyWithValue("NMSRedelivered", amqMessage.NMSRedelivered.ToString());
+                esbMessage.SetPropertyWithValue("NMSPriority", amqMessage.NMSPriority.ToString());
+                esbMessage.SetPropertyWithValue("NMSDestination", amqMessage.NMSDestination.ToString());
+                esbMessage.SetPropertyWithValue("NMSDeliveryMode", amqMessage.NMSDeliveryMode.ToString());
+                esbMessage.SetPropertyWithValue("NMSCorrelationID", amqMessage.NMSCorrelationID);
+
+                foreach (string amqMessagePropertyKey in amqMessage.Properties.Keys)
+                {
+                    esbMessage.SetPropertyWithValue("prop_" + amqMessagePropertyKey, amqMessage.Properties[amqMessagePropertyKey].ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Ошибка преобразования сообщения: " + ex.Message, ex);
+                throw ex;
             }
 
-            int fiveTimes = 5;
-            while (!_messageHandler.HandleMessage(esbMessage))
+            try
             {
-                Thread.Sleep(1000);
-                fiveTimes--;
-                if (fiveTimes == 0)
+                int fiveTimes = 5;
+                while (!_messageHandler.HandleMessage(esbMessage))
                 {
-                    throw new Exception("Не удалось отправить сообщение в шину");
+                    Thread.Sleep(1000);
+                    fiveTimes--;
+                    if (fiveTimes == 0)
+                    {
+                        throw new Exception("Не удалось отправить сообщение в шину");
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Не удалось отправить сообщение в шину: " + ex.Message, ex);
+                throw ex;
             }
         }
 
