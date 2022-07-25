@@ -1,10 +1,12 @@
 ﻿using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Text;
 using System.Threading;
 
 namespace openplugins.ActiveMQ
 {
-    internal delegate void MessageReceivedDelegate(string message);
+    internal delegate void MessageReceivedDelegate(Apache.NMS.ITextMessage amqMessage);
     internal class ActiveMQConsumer_ESB : IStandartIngoingConnectionPoint
     {
         private readonly ILogger _logger;
@@ -47,10 +49,11 @@ namespace openplugins.ActiveMQ
                 ct.WaitHandle.WaitOne(30000);
             }
 
+            _messageHandler = messageHandler;
             WriteLogString("Приступаю к инициализации подписчика к очереди " + _queueName);
-            using (TopicConsumer topicConsumer = new TopicConsumer(_queueName, _host, _login, _password, "ActiveMQConsumer_ESB"))
+            using (QueueConsumer queueConsumer = new QueueConsumer(_queueName, _host, _login, _password, "ActiveMQConsumer_ESB"))
             {
-                topicConsumer.OnMessageReceived += new MessageReceivedDelegate(SendMessagetoESB);
+                queueConsumer.OnMessageReceived += new MessageReceivedDelegate(SendMessagetoESB);
                 WriteLogString("Подписчик инициализиолван");
                 while (!ct.IsCancellationRequested)
                 {
@@ -59,9 +62,36 @@ namespace openplugins.ActiveMQ
             }
         }
 
-        private void SendMessagetoESB(string activeMQmessage)
+        private void SendMessagetoESB(Apache.NMS.ITextMessage amqMessage)
         {
-            WriteLogString("Получено сообщение: " + activeMQmessage);
+            WriteLogString("Получено сообщение: " + amqMessage.Text);
+            Message esbMessage = _messageFactory.CreateMessage("AMQ_message");
+            esbMessage.Body = Encoding.UTF8.GetBytes(amqMessage.Text);
+            esbMessage.SetPropertyWithValue("NMSType", amqMessage.NMSType.ToString());
+            esbMessage.SetPropertyWithValue("NMSTimeToLive", amqMessage.NMSTimeToLive.ToString());
+            esbMessage.SetPropertyWithValue("NMSMessageId", amqMessage.NMSMessageId.ToString());
+            esbMessage.SetPropertyWithValue("NMSTimestamp", amqMessage.NMSTimestamp.ToString());
+            esbMessage.SetPropertyWithValue("NMSRedelivered", amqMessage.NMSRedelivered.ToString());
+            esbMessage.SetPropertyWithValue("NMSPriority", amqMessage.NMSPriority.ToString());
+            esbMessage.SetPropertyWithValue("NMSDestination", amqMessage.NMSDestination.ToString());
+            esbMessage.SetPropertyWithValue("NMSDeliveryMode", amqMessage.NMSDeliveryMode.ToString());
+            esbMessage.SetPropertyWithValue("NMSCorrelationID", amqMessage.NMSCorrelationID.ToString());
+
+            foreach(string amqMessagePropertyKey in amqMessage.Properties.Keys)
+            {
+                esbMessage.SetPropertyWithValue("prop_" + amqMessagePropertyKey, amqMessage.Properties[amqMessagePropertyKey]);
+            }
+
+            int fiveTimes = 5;
+            while (!_messageHandler.HandleMessage(esbMessage))
+            {
+                Thread.Sleep(1000);
+                fiveTimes--;
+                if (fiveTimes == 0)
+                {
+                    throw new Exception("Не удалось отправить сообщение в шину");
+                }
+            }
         }
 
         private void WriteLogString(string log)

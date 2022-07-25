@@ -5,7 +5,7 @@ using System;
 
 namespace openplugins.ActiveMQ
 {
-    internal class TopicConsumer : IDisposable
+    internal class QueueConsumer : IDisposable
     {
         private readonly string queueName = null;
         private readonly IConnectionFactory connectionFactory;
@@ -14,7 +14,7 @@ namespace openplugins.ActiveMQ
         private readonly IMessageConsumer consumer;
         private bool isDisposed = false;
 
-        public TopicConsumer(string queue, string brokerUri, string userName, string password, string clientId)
+        public QueueConsumer(string queue, string brokerUri, string userName, string password, string clientId)
         {
             queueName = queue;
             connectionFactory = new ConnectionFactory(brokerUri);
@@ -29,7 +29,7 @@ namespace openplugins.ActiveMQ
         private void OnMessage(IMessage message)
         {
             ITextMessage textMessage = message as ITextMessage;
-            OnMessageReceived?.Invoke(textMessage.Text);
+            OnMessageReceived?.Invoke(textMessage);
         }
 
         public event MessageReceivedDelegate OnMessageReceived;

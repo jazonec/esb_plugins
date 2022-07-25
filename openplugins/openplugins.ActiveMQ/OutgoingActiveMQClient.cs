@@ -78,7 +78,7 @@ namespace openplugins.ActiveMQ
                 }
                 else
                 {
-                    ct.WaitHandle.WaitOne(new TimeSpan(0, 0, 30));
+                    ct.WaitHandle.WaitOne(5000);
                 }
             }
             connection.Stop();
