@@ -5,6 +5,7 @@ using System.Threading;
 using Apache.NMS;
 using Apache.NMS.ActiveMQ;
 using System.Text;
+using System.Collections.Generic;
 
 namespace openplugins.ActiveMQ
 {
@@ -13,22 +14,31 @@ namespace openplugins.ActiveMQ
         private readonly ILogger _logger;
         private readonly bool _debugMode;
         private readonly string _host;
-        private readonly string _queue;
         private readonly string _login;
         private readonly string _password;
+        private readonly Dictionary<string, string> _typeToQueue;
 
-        IDestination destination;
+        Dictionary<string, IDestination> destinations;
         IConnection connection;
         ISession session;
 
         public OutgoingActiveMQClient(JObject settings, IServiceLocator serviceLocator)
         {
+            _typeToQueue = new Dictionary<string, string>();
+            destinations = new Dictionary<string, IDestination>();
+
             _logger = serviceLocator.GetLogger(GetType());
             _debugMode = (bool)settings["debug"];
             _host = (string)settings["host"];
-            _queue = (string)settings["queue"];
             _login = (string)settings["login"];
             _password = (string)settings["password"];
+
+            JArray queues = (JArray)settings["mapping"];
+            foreach (JObject queue in queues)
+            {
+                _typeToQueue.Add((string)queue["type"], (string)queue["queue"]);
+            }
+
         }
 
         public void Cleanup()
@@ -48,8 +58,11 @@ namespace openplugins.ActiveMQ
             connection = factory.CreateConnection(_login, _password);
             connection.Start();
             session = connection.CreateSession();
-            destination = session.GetQueue(_queue);
-            WriteLogString(string.Format("Подключились к ActiveMQ: host'{0}' queue'{1}'", _host, _queue));
+            foreach (KeyValuePair<string, string> typeToQueue in _typeToQueue)
+            {
+                destinations.Add(typeToQueue.Key, session.GetQueue(typeToQueue.Value));
+            }
+            WriteLogString(string.Format("Подключились к ActiveMQ: host'{0}'", _host));
         }
 
         public void Run(IMessageSource messageSource, IMessageReplyHandler replyHandler, CancellationToken ct)
@@ -61,20 +74,35 @@ namespace openplugins.ActiveMQ
             }
 
             _logger.Info("Запущена отправка сообщений в ActiveMQ");
-            IMessageProducer producer = session.CreateProducer(destination);
+            IMessageProducer producer = session.CreateProducer();
 
             while (!ct.IsCancellationRequested)
             {
                 Message message = messageSource.PeekLockMessage(ct, 1000);
                 if (message != null)
                 {
-                    ITextMessage amqMessage = session.CreateTextMessage();
-                    amqMessage.Text = Encoding.UTF8.GetString(message.Body);
-                    amqMessage.Properties["OriginalID"] = message.Id.ToString();
-                    amqMessage.NMSType = message.Type;
-                    producer.Send(amqMessage);
+                    if (!_typeToQueue.ContainsKey(message.Type))
+                    {
+                        var errorString = string.Format("Для типа {0} отсутствует настройка", message.Type);
+                        _logger.Error(errorString);
+                        messageSource.CompletePeekLock(message.Id, MessageHandlingError.RejectedMessage, errorString);
+                        continue;
+                    }
 
-                    messageSource.CompletePeekLock(message.Id);
+                    try
+                    {
+                        ITextMessage amqMessage = session.CreateTextMessage();
+                        amqMessage.Text = Encoding.UTF8.GetString(message.Body);
+                        amqMessage.Properties["OriginalID"] = message.Id.ToString();
+                        amqMessage.NMSType = message.Type;
+                        producer.Send(destinations[message.Type], amqMessage);
+                        WriteLogString(string.Format("Сообщение {0} отправлено в очередь {1}", message.Id, _typeToQueue[message.Type]));
+
+                        messageSource.CompletePeekLock(message.Id);
+                    }catch (Exception ex){
+                        _logger.Error("Ошибка отправки сообщения в ActiveMQ", ex);
+                        messageSource.CompletePeekLock(message.Id, MessageHandlingError.RejectedMessage, ex.Message);
+                    }
                 }
                 else
                 {
