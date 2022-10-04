@@ -91,8 +91,8 @@ namespace openplugins.ActiveMQ
 
                     try
                     {
-                        ITextMessage amqMessage = session.CreateTextMessage();
-                        amqMessage.Text = Encoding.UTF8.GetString(message.Body);
+                        IBytesMessage amqMessage = session.CreateBytesMessage();
+                        amqMessage.WriteBytes(message.Body);
                         amqMessage.Properties["OriginalID"] = message.Id.ToString();
                         amqMessage.NMSType = message.Type;
                         producer.Send(destinations[message.Type], amqMessage);
