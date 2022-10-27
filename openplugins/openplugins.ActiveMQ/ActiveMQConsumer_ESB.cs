@@ -1,4 +1,5 @@
-﻿using ESB_ConnectionPoints.PluginsInterfaces;
+﻿using Apache.NMS;
+using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Text;
@@ -6,7 +7,9 @@ using System.Threading;
 
 namespace openplugins.ActiveMQ
 {
-    internal delegate void MessageReceivedDelegate(Apache.NMS.ITextMessage amqMessage);
+    internal delegate void MessageReceivedDelegate(IMessage amqMessage);
+    internal delegate void OnDebug(string message);
+    internal delegate void OnError(string message, Exception exception);
     internal class ActiveMQConsumer_ESB : IStandartIngoingConnectionPoint
     {
         private readonly ILogger _logger;
@@ -54,7 +57,10 @@ namespace openplugins.ActiveMQ
             using (QueueConsumer queueConsumer = new QueueConsumer(_queueName, _host, _login, _password, "ActiveMQConsumer_ESB"))
             {
                 queueConsumer.OnMessageReceived += new MessageReceivedDelegate(SendMessagetoESB);
-                WriteLogString("Подписчик инициализиолван");
+                queueConsumer.OnDebug += new OnDebug(DebugLog);
+                queueConsumer.OnError += new OnError(ErrorLog);
+                queueConsumer.Run();
+                WriteLogString("Подписчик инициализирован");
                 while (!ct.IsCancellationRequested)
                 {
                     ct.WaitHandle.WaitOne(5000);
@@ -62,14 +68,38 @@ namespace openplugins.ActiveMQ
             }
         }
 
-        private void SendMessagetoESB(Apache.NMS.ITextMessage amqMessage)
+        private void DebugLog(string logMessage)
         {
-            WriteLogString("Получено сообщение: " + amqMessage.Text);
+            WriteLogString(logMessage);
+        }
+
+        private void ErrorLog(string errorMessage, Exception exception)
+        {
+            _logger.Error(errorMessage, exception);
+        }
+
+        private void SendMessagetoESB(IMessage amqMessage)
+        {
+            byte[] messageBody;
+            if(amqMessage is ITextMessage)
+            {
+                ITextMessage textMessage = amqMessage as ITextMessage;
+                messageBody = Encoding.UTF8.GetBytes(textMessage.Text);
+            }else if(amqMessage is IBytesMessage)
+            {
+                IBytesMessage bytesMessage = amqMessage as IBytesMessage;
+                messageBody = bytesMessage.Content;
+            }
+            else
+            {
+                throw new Exception("Uncknown amq-message type");
+            }
+            WriteLogString("Получено сообщение: " + Encoding.UTF8.GetString(messageBody));
 
             Message esbMessage = _messageFactory.CreateMessage("AMQ_message");
             try
             {
-                esbMessage.Body = Encoding.UTF8.GetBytes(amqMessage.Text);
+                esbMessage.Body = messageBody;
                 esbMessage.SetPropertyWithValue("NMSType", amqMessage.NMSType.ToString());
                 esbMessage.SetPropertyWithValue("NMSTimeToLive", amqMessage.NMSTimeToLive.ToString());
                 esbMessage.SetPropertyWithValue("NMSMessageId", amqMessage.NMSMessageId.ToString());

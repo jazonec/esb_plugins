@@ -16,7 +16,9 @@ namespace openplugins.ActiveMQ
         private readonly string _host;
         private readonly string _login;
         private readonly string _password;
-        private readonly Dictionary<string, string> _typeToQueue;
+        private readonly string _queue;
+
+        //private readonly Dictionary<string, string> _typeToQueue;
 
         Dictionary<string, IDestination> destinations;
         IConnection connection;
@@ -24,7 +26,7 @@ namespace openplugins.ActiveMQ
 
         public OutgoingActiveMQClient(JObject settings, IServiceLocator serviceLocator)
         {
-            _typeToQueue = new Dictionary<string, string>();
+            //_typeToQueue = new Dictionary<string, string>();
             destinations = new Dictionary<string, IDestination>();
 
             _logger = serviceLocator.GetLogger(GetType());
@@ -32,12 +34,13 @@ namespace openplugins.ActiveMQ
             _host = (string)settings["host"];
             _login = (string)settings["login"];
             _password = (string)settings["password"];
+            _queue = (string)settings["queue"];
 
-            JArray queues = (JArray)settings["mapping"];
+            /*JArray queues = (JArray)settings["mapping"];
             foreach (JObject queue in queues)
             {
                 _typeToQueue.Add((string)queue["type"], (string)queue["queue"]);
-            }
+            }*/
 
         }
 
@@ -58,10 +61,10 @@ namespace openplugins.ActiveMQ
             connection = factory.CreateConnection(_login, _password);
             connection.Start();
             session = connection.CreateSession();
-            foreach (KeyValuePair<string, string> typeToQueue in _typeToQueue)
+            /*foreach (KeyValuePair<string, string> typeToQueue in _typeToQueue)
             {
                 destinations.Add(typeToQueue.Key, session.GetQueue(typeToQueue.Value));
-            }
+            }*/
             WriteLogString(string.Format("Подключились к ActiveMQ: host'{0}'", _host));
         }
 
@@ -73,21 +76,22 @@ namespace openplugins.ActiveMQ
                 ct.WaitHandle.WaitOne(30000);
             }
 
-            _logger.Info("Запущена отправка сообщений в ActiveMQ");
+            _logger.Info("Запущена отправка сообщений в ActiveMQ в очередь " + _queue);
             IMessageProducer producer = session.CreateProducer();
+            IQueue queue = session.GetQueue(_queue);
 
             while (!ct.IsCancellationRequested)
             {
                 Message message = messageSource.PeekLockMessage(ct, 1000);
                 if (message != null)
                 {
-                    if (!_typeToQueue.ContainsKey(message.Type))
+                    /*if (!_typeToQueue.ContainsKey(message.Type))
                     {
                         var errorString = string.Format("Для типа {0} отсутствует настройка", message.Type);
                         _logger.Error(errorString);
                         messageSource.CompletePeekLock(message.Id, MessageHandlingError.RejectedMessage, errorString);
                         continue;
-                    }
+                    }*/
 
                     try
                     {
@@ -95,8 +99,9 @@ namespace openplugins.ActiveMQ
                         amqMessage.WriteBytes(message.Body);
                         amqMessage.Properties["OriginalID"] = message.Id.ToString();
                         amqMessage.NMSType = message.Type;
-                        producer.Send(destinations[message.Type], amqMessage);
-                        WriteLogString(string.Format("Сообщение {0} отправлено в очередь {1}", message.Id, _typeToQueue[message.Type]));
+                        FillProperties(message, amqMessage);
+                        producer.Send(queue, amqMessage);
+                        WriteLogString(string.Format("Сообщение {0} отправлено в очередь {1}", message.Id, queue));
 
                         messageSource.CompletePeekLock(message.Id);
                     }catch (Exception ex){
@@ -111,6 +116,15 @@ namespace openplugins.ActiveMQ
             }
             connection.Stop();
         }
+
+        private void FillProperties(Message message, IBytesMessage amqMessage)
+        {
+            foreach (var property in message.Properties)
+            {
+                amqMessage.Properties[property.Key] = property.Value.ToString();
+            }
+        }
+
         private void WriteLogString(string log)
         {
             if (_debugMode)
