@@ -4,16 +4,36 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.3.32922.545
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.AESServerClient", "openplugins.AESServerClient\openplugins.AESServerClient.csproj", "{0E919A5A-2D25-40C7-81AA-F42F797F1EAB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361} = {86B682FA-AE0A-4D7D-866C-A0D00A044361}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.ReflectBatchMessage", "openplugins.ReflectBatchMessage\openplugins.ReflectBatchMessage.csproj", "{DEE4B6BC-3DAD-4898-9CE6-A62BBCA17656}"
+	ProjectSection(ProjectDependencies) = postProject
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361} = {86B682FA-AE0A-4D7D-866C-A0D00A044361}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.ReflectChangedMessage", "openplugins.ReflectChangedMessage\openplugins.ReflectChangedMessage.csproj", "{2F9555B8-EB15-4728-A6D4-54553825A58B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361} = {86B682FA-AE0A-4D7D-866C-A0D00A044361}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.ADIntegration", "openplugins.ADIntegration\openplugins.ADIntegration.csproj", "{85EE2695-D5EC-4A26-B4D2-A13344453837}"
+	ProjectSection(ProjectDependencies) = postProject
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361} = {86B682FA-AE0A-4D7D-866C-A0D00A044361}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.ActiveMQ", "openplugins.ActiveMQ\openplugins.ActiveMQ.csproj", "{E3F86263-A2AD-4440-B9F7-BBA29EFFA182}"
+	ProjectSection(ProjectDependencies) = postProject
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361} = {86B682FA-AE0A-4D7D-866C-A0D00A044361}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.OleDb", "openplugins.OleDb\openplugins.OleDb.csproj", "{6833DA74-612C-46FC-B3C2-276AAB758212}"
+	ProjectSection(ProjectDependencies) = postProject
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361} = {86B682FA-AE0A-4D7D-866C-A0D00A044361}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFormsApp1", "WinFormsApp1\WinFormsApp1.csproj", "{86B682FA-AE0A-4D7D-866C-A0D00A044361}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,6 +73,12 @@ Global
 		{6833DA74-612C-46FC-B3C2-276AAB758212}.Linux|Any CPU.Build.0 = Debug|Any CPU
 		{6833DA74-612C-46FC-B3C2-276AAB758212}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6833DA74-612C-46FC-B3C2-276AAB758212}.Release|Any CPU.Build.0 = Release|Any CPU
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361}.Linux|Any CPU.ActiveCfg = Debug|Any CPU
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361}.Linux|Any CPU.Build.0 = Debug|Any CPU
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{86B682FA-AE0A-4D7D-866C-A0D00A044361}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
