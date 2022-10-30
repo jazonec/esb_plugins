@@ -2,6 +2,7 @@
 using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections;
 using System.Text;
 using System.Threading;
 
@@ -89,6 +90,10 @@ namespace openplugins.ActiveMQ
             {
                 IBytesMessage bytesMessage = amqMessage as IBytesMessage;
                 messageBody = bytesMessage.Content;
+            }else if(amqMessage is IMapMessage)
+            {
+                IMapMessage mapMessage = amqMessage as IMapMessage;
+                messageBody = Encoding.UTF8.GetBytes(GetMapAsString(mapMessage.Body));
             }
             else
             {
@@ -139,6 +144,17 @@ namespace openplugins.ActiveMQ
                 _logger.Error("Не удалось отправить сообщение в шину: " + ex.Message, ex);
                 throw ex;
             }
+        }
+
+        private string GetMapAsString(IPrimitiveMap body)
+        {
+            ICollection keys = body.Keys;
+            JObject keyValuePairs = new JObject();
+            foreach (var key in keys)
+            {
+                keyValuePairs[key.ToString()] = body.GetString(key.ToString());
+            }
+            return keyValuePairs.ToString();
         }
 
         private void WriteLogString(string log)
