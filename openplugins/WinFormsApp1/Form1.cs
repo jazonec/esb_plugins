@@ -19,10 +19,11 @@ namespace WinFormsApp1
             DirectoryEntry _de = new DirectoryEntry(_adPath, _adUser, _adPwd);
             DirectoryEntries _ds = _de.Children;
             DirectoryEntry _newUser;
+            ;
 
-            string _newUserName = "test_02";
+            string _newUserName = userName.Text;
 
-            string _createMessage = string.Format("CN=esb_{0},OU=xTestZoneESB", _newUserName);
+            string _createMessage = string.Format("CN=esb_{0},OU={1}", _newUserName, orgUnit.Text);
             try
             {
                 _newUser = _ds.Find(_createMessage);
@@ -32,7 +33,7 @@ namespace WinFormsApp1
                 _newUser = _ds.Add(_createMessage, "user");
             }
             _newUser.Properties["samAccountName"].Value = _newUserName;
-            _newUser.Properties["kadr-id"].Value = "123456789";
+            _newUser.Properties["kadr-id"].Value = 123456789;
             _newUser.Properties["department"].Value = "654";
             _newUser.CommitChanges();
             _de.CommitChanges();
