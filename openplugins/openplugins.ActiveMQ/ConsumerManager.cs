@@ -1,4 +1,5 @@
 ﻿using Apache.NMS;
+using Apache.NMS.ActiveMQ.Commands;
 using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
 using System;
@@ -20,28 +21,39 @@ namespace openplugins.ActiveMQ
 
         private readonly bool _debugMode;
 
+        private readonly string brokerUri;
+        private string user;
+        private readonly string password;
+
+        private bool hasError = false;
+        private string errorMessage = "";
+
         private readonly List<string> queueList;
         private Dictionary<string, QueueConsumer> consumers;
         private ConnectionPool connectionPool;
 
+        JObject debugSettings;
+
         public ConsumerManager(JObject settings, IServiceLocator serviceLocator)
         {
+            debugSettings = settings;
+
             _logger = serviceLocator.GetLogger(GetType());
             _messageFactory = serviceLocator.GetMessageFactory();
             _debugMode = (bool)settings["debug"];
 
             queueList = new List<string>();
-            queueList.Add((string)settings["queue"]);
+            //queueList.Add((string)settings["queue"]);
+            JArray queuesArr = (JArray)debugSettings["queues"];
+            foreach (var queue in queuesArr)
+            {
+                queueList.Add((string)queue);
+            }
 
-            string brokerUri = (string)settings["brockerUri"];
-            string user = (string)settings["user"];
-            string password = (string)settings["password"];
+            brokerUri = (string)settings["brockerUri"];
+            user = (string)settings["user"];
+            password = (string)settings["password"];
 
-            connectionPool = new ConnectionPool(brokerUri, user, password);
-            connectionPool.OnError += new OnError(ErrorLog);
-            connectionPool.OnDebug += new OnDebug(DebugLog);
-
-            connectionPool.CheckConnection();
         }
         public void Cleanup()
         {
@@ -57,6 +69,8 @@ namespace openplugins.ActiveMQ
 
         public void Initialize()
         {
+            connectionPool = new ConnectionPool(this, brokerUri, user, password);
+            consumers = new Dictionary<string, QueueConsumer>();
         }
 
         public void Run(IMessageHandler messageHandler, CancellationToken ct)
@@ -89,7 +103,13 @@ namespace openplugins.ActiveMQ
             while (!ct.IsCancellationRequested)
             {
                 ct.WaitHandle.WaitOne(5000);
+                if (hasError)
+                {
+                    _logger.Error(errorMessage);
+                    break;
+                }
             }
+            connectionPool.ClearConnection();
         }
 
         private void DebugLog(string logMessage)
@@ -124,7 +144,7 @@ namespace openplugins.ActiveMQ
             }
             WriteLogString("Получено сообщение: " + Encoding.UTF8.GetString(messageBody));
 
-            Message esbMessage = _messageFactory.CreateMessage("AMQ_message");
+            ESB_ConnectionPoints.PluginsInterfaces.Message esbMessage = _messageFactory.CreateMessage("AMQ_message");
             try
             {
                 esbMessage.Body = messageBody;
@@ -180,12 +200,18 @@ namespace openplugins.ActiveMQ
             return keyValuePairs.ToString();
         }
 
-        private void WriteLogString(string log)
+        public void WriteLogString(string log)
         {
             if (_debugMode)
             {
                 _logger.Debug(log);
             }
+        }
+
+        internal void SetError(string v)
+        {
+            hasError = true;
+            errorMessage = v;
         }
     }
 }

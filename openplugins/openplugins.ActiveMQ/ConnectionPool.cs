@@ -15,10 +15,9 @@ namespace openplugins.ActiveMQ
 
         private static Dictionary<string, IConnection> connections = new Dictionary<string, IConnection>();
 
-        public event OnDebug OnDebug;
-        public event OnError OnError;
+        private readonly ConsumerManager consumerManager;
 
-        public ConnectionPool(string brokerUri, string user, string password)
+        public ConnectionPool(ConsumerManager consumerManager, string brokerUri, string user, string password)
         {
             if (string.IsNullOrEmpty(brokerUri))
             {
@@ -38,9 +37,10 @@ namespace openplugins.ActiveMQ
             this.brokerUri = brokerUri;
             this.user = user;
             this.password = password;
+            this.consumerManager = consumerManager;
         }
 
-        internal IConnection GetConnection(string name)
+        internal IConnection GetConnection(string name="esb")
         {
             lock (connections)
             {
@@ -61,50 +61,22 @@ namespace openplugins.ActiveMQ
                 connection.ExceptionListener += Connection_ExceptionListener;
                 connection.ClientId = "DatareonESB_" + name;
                 connections.Add(name, connection);
-                OnDebug?.Invoke("Создано соединение для " + name);
+                consumerManager.WriteLogString("Создано соединение для " + name);
                 return connection;
-            }
-        }
-
-        private void Reconnection()
-        {
-            lock (connections)
-            {
-                foreach (var item in connections)
-                {
-                    ConnectionFactory factory = new ConnectionFactory(brokerUri);
-                    IConnection connection = factory.CreateConnection(user, password);
-
-                    connection.ConnectionInterruptedListener += Connection_ConnectionInterruptedListener;
-                    connection.ExceptionListener += Connection_ExceptionListener;
-                    connections[item.Key] = connection;
-                }
             }
         }
 
         private void Connection_ExceptionListener(Exception exception)
         {
-            OnError("Соединение вернуло ошибку!", exception);
-            Reconnection();
+            consumerManager.SetError("Соединение вернуло ошибку! " + exception.Message);
         }
 
         private void Connection_ConnectionInterruptedListener()
         {
-            OnDebug("Соединение прервалось, пробую перепоключиться");
-            Reconnection();
+            consumerManager.SetError("Соединение прервалось!");
         }
 
-        internal void CheckConnection()
-        {
-            var factory = new ConnectionFactory(brokerUri, "DatareonESB_check");
-            using (IConnection conn = factory.CreateConnection(user, password))
-            {
-                conn.Start();
-                OnDebug("Соединение проверено");
-            }
-        }
-
-        internal void ClearConnection(string name)
+        internal void ClearConnection(string name="esb")
         {
             lock (connections)
             {

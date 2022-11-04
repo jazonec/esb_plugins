@@ -55,7 +55,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ActiveMQConsumer_ESB.cs" />
+    <Compile Include="ConnectionPool.cs" />
+    <Compile Include="ConsumerManager.cs" />
     <Compile Include="IngoingConnectionPointFactory.cs" />
     <Compile Include="OutgoingActiveMQClient.cs" />
     <Compile Include="OutgoingConnectionPointFactory.cs" />
