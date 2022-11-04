@@ -31,7 +31,7 @@ namespace openplugins.ActiveMQ
                 throw new FormatException("Некоректный json с настройками");
             }
 
-            return new ActiveMQConsumer_ESB(settings, serviceLocator);
+            return new ConsumerManager(settings, serviceLocator);
         }
     }
 }

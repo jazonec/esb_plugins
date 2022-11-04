@@ -3,6 +3,7 @@ using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
@@ -11,27 +12,36 @@ namespace openplugins.ActiveMQ
     internal delegate void MessageReceivedDelegate(IMessage amqMessage);
     internal delegate void OnDebug(string message);
     internal delegate void OnError(string message, Exception exception);
-    internal class ActiveMQConsumer_ESB : IStandartIngoingConnectionPoint
+    internal class ConsumerManager : IStandartIngoingConnectionPoint
     {
         private readonly ILogger _logger;
         private readonly IMessageFactory _messageFactory;
         private IMessageHandler _messageHandler;
-        private readonly bool _debugMode;
-        private readonly string _queueName;
-        private readonly string _host;
-        private readonly string _login;
-        private readonly string _password;
 
-        public ActiveMQConsumer_ESB(JObject settings, IServiceLocator serviceLocator)
+        private readonly bool _debugMode;
+
+        private readonly List<string> queueList;
+        private Dictionary<string, QueueConsumer> consumers;
+        private ConnectionPool connectionPool;
+
+        public ConsumerManager(JObject settings, IServiceLocator serviceLocator)
         {
             _logger = serviceLocator.GetLogger(GetType());
             _messageFactory = serviceLocator.GetMessageFactory();
             _debugMode = (bool)settings["debug"];
 
-            _queueName = (string)settings["queue"];
-            _host = (string)settings["host"];
-            _login = (string)settings["login"];
-            _password = (string)settings["password"];
+            queueList = new List<string>();
+            queueList.Add((string)settings["queue"]);
+
+            string brokerUri = (string)settings["brockerUri"];
+            string user = (string)settings["user"];
+            string password = (string)settings["password"];
+
+            connectionPool = new ConnectionPool(brokerUri, user, password);
+            connectionPool.OnError += new OnError(ErrorLog);
+            connectionPool.OnDebug += new OnDebug(DebugLog);
+
+            connectionPool.CheckConnection();
         }
         public void Cleanup()
         {
@@ -39,6 +49,10 @@ namespace openplugins.ActiveMQ
 
         public void Dispose()
         {
+            foreach(var consumer in consumers.Values)
+            {
+                consumer?.Dispose();
+            }
         }
 
         public void Initialize()
@@ -54,18 +68,27 @@ namespace openplugins.ActiveMQ
             }
 
             _messageHandler = messageHandler;
-            WriteLogString("Приступаю к инициализации подписчика к очереди " + _queueName);
-            using (QueueConsumer queueConsumer = new QueueConsumer(_queueName, _host, _login, _password, "ActiveMQConsumer_ESB"))
+
+            MessageReceivedDelegate messageDelegate = new MessageReceivedDelegate(SendMessagetoESB);
+            OnError errorDelegate = new OnError(ErrorLog);
+            OnDebug debugDelegate = new OnDebug(DebugLog);
+
+            WriteLogString("Приступаю к инициализации подписчиков к очередям.");
+            foreach (var queue in queueList)
             {
-                queueConsumer.OnMessageReceived += new MessageReceivedDelegate(SendMessagetoESB);
-                queueConsumer.OnDebug += new OnDebug(DebugLog);
-                queueConsumer.OnError += new OnError(ErrorLog);
-                queueConsumer.Run();
-                WriteLogString("Подписчик инициализирован");
-                while (!ct.IsCancellationRequested)
-                {
-                    ct.WaitHandle.WaitOne(5000);
-                }
+                QueueConsumer consumer = new QueueConsumer(queue, connectionPool);
+                consumer.OnMessageReceived += messageDelegate;
+                consumer.OnDebug += debugDelegate;
+                consumer.OnError += errorDelegate;
+                consumer.Run();
+                consumers.Add(queue, consumer);
+            }
+
+            WriteLogString("Подписчики инициализированы");
+
+            while (!ct.IsCancellationRequested)
+            {
+                ct.WaitHandle.WaitOne(5000);
             }
         }
 
