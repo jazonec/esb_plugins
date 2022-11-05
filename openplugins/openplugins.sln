@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.ActiveMQ", "ope
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.OleDb", "openplugins.OleDb\openplugins.OleDb.csproj", "{6833DA74-612C-46FC-B3C2-276AAB758212}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "openplugins.multijob", "openplugins.multijob\openplugins.multijob.csproj", "{D518B6D4-DA6F-4F57-A4AE-C18FC9AD31E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -53,6 +55,12 @@ Global
 		{6833DA74-612C-46FC-B3C2-276AAB758212}.Linux|Any CPU.Build.0 = Debug|Any CPU
 		{6833DA74-612C-46FC-B3C2-276AAB758212}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6833DA74-612C-46FC-B3C2-276AAB758212}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D518B6D4-DA6F-4F57-A4AE-C18FC9AD31E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D518B6D4-DA6F-4F57-A4AE-C18FC9AD31E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D518B6D4-DA6F-4F57-A4AE-C18FC9AD31E7}.Linux|Any CPU.ActiveCfg = Debug|Any CPU
+		{D518B6D4-DA6F-4F57-A4AE-C18FC9AD31E7}.Linux|Any CPU.Build.0 = Debug|Any CPU
+		{D518B6D4-DA6F-4F57-A4AE-C18FC9AD31E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D518B6D4-DA6F-4F57-A4AE-C18FC9AD31E7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

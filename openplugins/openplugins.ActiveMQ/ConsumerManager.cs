@@ -1,8 +1,10 @@
 ﻿using Apache.NMS;
+using Apache.NMS.ActiveMQ.Commands;
 using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
@@ -11,27 +13,50 @@ namespace openplugins.ActiveMQ
     internal delegate void MessageReceivedDelegate(IMessage amqMessage);
     internal delegate void OnDebug(string message);
     internal delegate void OnError(string message, Exception exception);
-    internal class ActiveMQConsumer_ESB : IStandartIngoingConnectionPoint
+    internal class ConsumerManager : IStandartIngoingConnectionPoint, IEsbAmqManager
     {
         private readonly ILogger _logger;
         private readonly IMessageFactory _messageFactory;
         private IMessageHandler _messageHandler;
-        private readonly bool _debugMode;
-        private readonly string _queueName;
-        private readonly string _host;
-        private readonly string _login;
-        private readonly string _password;
 
-        public ActiveMQConsumer_ESB(JObject settings, IServiceLocator serviceLocator)
+        private readonly bool _debugMode;
+
+        private readonly string brokerUri;
+        private string user;
+        private readonly string password;
+
+        private bool hasError = false;
+        private string errorMessage = "";
+
+        private readonly List<string> queueList;
+        private Dictionary<string, QueueConsumer> consumers;
+        private ConnectionPool connectionPool;
+
+        JObject debugSettings;
+
+        public bool HasError { get => hasError; }
+        public string ErrorMessage { get => errorMessage; }
+
+        public ConsumerManager(JObject settings, IServiceLocator serviceLocator)
         {
+            debugSettings = settings;
+
             _logger = serviceLocator.GetLogger(GetType());
             _messageFactory = serviceLocator.GetMessageFactory();
             _debugMode = (bool)settings["debug"];
 
-            _queueName = (string)settings["queue"];
-            _host = (string)settings["host"];
-            _login = (string)settings["login"];
-            _password = (string)settings["password"];
+            queueList = new List<string>();
+            //queueList.Add((string)settings["queue"]);
+            JArray queuesArr = (JArray)debugSettings["queues"];
+            foreach (var queue in queuesArr)
+            {
+                queueList.Add((string)queue);
+            }
+
+            brokerUri = (string)settings["brokerUri"];
+            user = (string)settings["user"];
+            password = (string)settings["password"];
+
         }
         public void Cleanup()
         {
@@ -39,10 +64,16 @@ namespace openplugins.ActiveMQ
 
         public void Dispose()
         {
+            foreach(var consumer in consumers.Values)
+            {
+                consumer?.Dispose();
+            }
         }
 
         public void Initialize()
         {
+            connectionPool = new ConnectionPool(this, brokerUri, user, password);
+            consumers = new Dictionary<string, QueueConsumer>();
         }
 
         public void Run(IMessageHandler messageHandler, CancellationToken ct)
@@ -53,20 +84,38 @@ namespace openplugins.ActiveMQ
                 ct.WaitHandle.WaitOne(30000);
             }
 
+            hasError = false;
+            errorMessage = null;
+
             _messageHandler = messageHandler;
-            WriteLogString("Приступаю к инициализации подписчика к очереди " + _queueName);
-            using (QueueConsumer queueConsumer = new QueueConsumer(_queueName, _host, _login, _password, "ActiveMQConsumer_ESB"))
+
+            MessageReceivedDelegate messageDelegate = new MessageReceivedDelegate(SendMessagetoESB);
+            OnError errorDelegate = new OnError(ErrorLog);
+            OnDebug debugDelegate = new OnDebug(DebugLog);
+
+            WriteLogString("Приступаю к инициализации подписчиков к очередям.");
+            foreach (var queue in queueList)
             {
-                queueConsumer.OnMessageReceived += new MessageReceivedDelegate(SendMessagetoESB);
-                queueConsumer.OnDebug += new OnDebug(DebugLog);
-                queueConsumer.OnError += new OnError(ErrorLog);
-                queueConsumer.Run();
-                WriteLogString("Подписчик инициализирован");
-                while (!ct.IsCancellationRequested)
-                {
-                    ct.WaitHandle.WaitOne(5000);
-                }
+                QueueConsumer consumer = new QueueConsumer(queue, connectionPool);
+                consumer.OnMessageReceived += messageDelegate;
+                consumer.OnDebug += debugDelegate;
+                consumer.OnError += errorDelegate;
+                consumer.Run();
+                consumers.Add(queue, consumer);
             }
+
+            WriteLogString("Подписчики инициализированы");
+
+            while (!ct.IsCancellationRequested)
+            {
+                if (hasError)
+                {
+                    _logger.Error(errorMessage);
+                    break;
+                }
+                ct.WaitHandle.WaitOne(5000);
+            }
+            connectionPool.ClearConnection("consumer");
         }
 
         private void DebugLog(string logMessage)
@@ -101,7 +150,7 @@ namespace openplugins.ActiveMQ
             }
             WriteLogString("Получено сообщение: " + Encoding.UTF8.GetString(messageBody));
 
-            Message esbMessage = _messageFactory.CreateMessage("AMQ_message");
+            ESB_ConnectionPoints.PluginsInterfaces.Message esbMessage = _messageFactory.CreateMessage("AMQ_message");
             try
             {
                 esbMessage.Body = messageBody;
@@ -157,12 +206,18 @@ namespace openplugins.ActiveMQ
             return keyValuePairs.ToString();
         }
 
-        private void WriteLogString(string log)
+        public void WriteLogString(string log)
         {
             if (_debugMode)
             {
                 _logger.Debug(log);
             }
+        }
+
+        public void SetError(string error)
+        {
+            hasError = true;
+            errorMessage = error;
         }
     }
 }
