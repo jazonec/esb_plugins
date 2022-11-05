@@ -28,7 +28,7 @@ namespace openplugins.ActiveMQ
                 throw new FormatException("Некоректный json с настройками");
             }
 
-            return new OutgoingActiveMQClient(settings, serviceLocator);
+            return new ProduserManager(settings, serviceLocator);
         }
     }
 }

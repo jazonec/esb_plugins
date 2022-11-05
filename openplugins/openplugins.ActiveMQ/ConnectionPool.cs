@@ -13,11 +13,11 @@ namespace openplugins.ActiveMQ
         private string user;
         private string password;
 
-        private static Dictionary<string, IConnection> connections = new Dictionary<string, IConnection>();
+        private Dictionary<string, IConnection> connections = new Dictionary<string, IConnection>();
 
-        private readonly ConsumerManager consumerManager;
+        private readonly IEsbAmqManager esbManager;
 
-        public ConnectionPool(ConsumerManager consumerManager, string brokerUri, string user, string password)
+        public ConnectionPool(IEsbAmqManager esbManager, string brokerUri, string user, string password)
         {
             if (string.IsNullOrEmpty(brokerUri))
             {
@@ -37,7 +37,7 @@ namespace openplugins.ActiveMQ
             this.brokerUri = brokerUri;
             this.user = user;
             this.password = password;
-            this.consumerManager = consumerManager;
+            this.esbManager = esbManager;
         }
 
         internal IConnection GetConnection(string name="esb")
@@ -61,25 +61,30 @@ namespace openplugins.ActiveMQ
                 connection.ExceptionListener += Connection_ExceptionListener;
                 connection.ClientId = "DatareonESB_" + name;
                 connections.Add(name, connection);
-                consumerManager.WriteLogString("Создано соединение для " + name);
+                esbManager.WriteLogString("Создано соединение для " + name);
                 return connection;
             }
         }
 
         private void Connection_ExceptionListener(Exception exception)
         {
-            consumerManager.SetError("Соединение вернуло ошибку! " + exception.Message);
+            esbManager.SetError("Соединение вернуло ошибку! " + exception.Message);
         }
 
         private void Connection_ConnectionInterruptedListener()
         {
-            consumerManager.SetError("Соединение прервалось!");
+            esbManager.SetError("Соединение прервалось!");
         }
 
         internal void ClearConnection(string name="esb")
         {
             lock (connections)
             {
+                var kv = connections.FirstOrDefault(x => x.Key == name);
+                if (kv.Value != null)
+                {
+                    kv.Value.Dispose();
+                }
                 connections.Remove(name);
             }
         }

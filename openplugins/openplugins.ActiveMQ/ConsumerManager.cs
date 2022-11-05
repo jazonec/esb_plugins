@@ -13,7 +13,7 @@ namespace openplugins.ActiveMQ
     internal delegate void MessageReceivedDelegate(IMessage amqMessage);
     internal delegate void OnDebug(string message);
     internal delegate void OnError(string message, Exception exception);
-    internal class ConsumerManager : IStandartIngoingConnectionPoint
+    internal class ConsumerManager : IStandartIngoingConnectionPoint, IEsbAmqManager
     {
         private readonly ILogger _logger;
         private readonly IMessageFactory _messageFactory;
@@ -34,6 +34,9 @@ namespace openplugins.ActiveMQ
 
         JObject debugSettings;
 
+        public bool HasError { get => hasError; }
+        public string ErrorMessage { get => errorMessage; }
+
         public ConsumerManager(JObject settings, IServiceLocator serviceLocator)
         {
             debugSettings = settings;
@@ -50,7 +53,7 @@ namespace openplugins.ActiveMQ
                 queueList.Add((string)queue);
             }
 
-            brokerUri = (string)settings["brockerUri"];
+            brokerUri = (string)settings["brokerUri"];
             user = (string)settings["user"];
             password = (string)settings["password"];
 
@@ -81,6 +84,9 @@ namespace openplugins.ActiveMQ
                 ct.WaitHandle.WaitOne(30000);
             }
 
+            hasError = false;
+            errorMessage = null;
+
             _messageHandler = messageHandler;
 
             MessageReceivedDelegate messageDelegate = new MessageReceivedDelegate(SendMessagetoESB);
@@ -102,14 +108,14 @@ namespace openplugins.ActiveMQ
 
             while (!ct.IsCancellationRequested)
             {
-                ct.WaitHandle.WaitOne(5000);
                 if (hasError)
                 {
                     _logger.Error(errorMessage);
                     break;
                 }
+                ct.WaitHandle.WaitOne(5000);
             }
-            connectionPool.ClearConnection();
+            connectionPool.ClearConnection("consumer");
         }
 
         private void DebugLog(string logMessage)
@@ -208,10 +214,10 @@ namespace openplugins.ActiveMQ
             }
         }
 
-        internal void SetError(string v)
+        public void SetError(string error)
         {
             hasError = true;
-            errorMessage = v;
+            errorMessage = error;
         }
     }
 }

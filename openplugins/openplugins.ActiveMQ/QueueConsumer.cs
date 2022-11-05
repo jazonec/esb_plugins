@@ -23,7 +23,7 @@ namespace openplugins.ActiveMQ
         {
             this.queue = queue;
             this.connectionPool = connectionPool;
-            connection = connectionPool.GetConnection();
+            connection = connectionPool.GetConnection("consumer");
         }
 
         private void OnMessage(IMessage message)
@@ -47,7 +47,7 @@ namespace openplugins.ActiveMQ
                 consumer?.Dispose();
                 session?.Dispose();
                 connection?.Dispose();
-                connectionPool.ClearConnection();
+                connectionPool.ClearConnection("consumer");
                 isDisposed = true;
             }
         }
@@ -55,9 +55,9 @@ namespace openplugins.ActiveMQ
         internal void Run()
         {
             connection.Start();
-            OnDebug?.Invoke("Соединение запущено");
+            OnDebug?.Invoke("Соединение для консюмера запущено");
             session = connection.CreateSession();
-            OnDebug?.Invoke("Сессия создана");
+            OnDebug?.Invoke("Сессия для консюмера создана");
             consumer = session.CreateConsumer(session.GetQueue(queue));
             consumer.Listener += new MessageListener(OnMessage);
             OnDebug?.Invoke("Консюмер добавлен");
