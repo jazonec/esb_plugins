@@ -13,3 +13,7 @@
 ### ReflectBatchMessage
 Позволяет сгруппировать одиночные сообщения в одно пакетное.
 [Подробно](/doc/reflectbatchmessage.md)
+
+### ActiveMQ connector
+Позволяет отправлять/получать сообщения в брокер ActiveMQ.
+[Подробно](/doc/ActiveMQ.md)
