@@ -146,9 +146,8 @@ namespace openplugins.ActiveMQ
             }
             else
             {
-                throw new Exception("Uncknown amq-message type");
+                throw new Exception("Unknown amq-message type");
             }
-            WriteLogString("Получено сообщение: " + Encoding.UTF8.GetString(messageBody));
 
             ESB_ConnectionPoints.PluginsInterfaces.Message esbMessage = _messageFactory.CreateMessage("AMQ_message");
             try
