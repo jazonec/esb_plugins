@@ -8,23 +8,22 @@ namespace openplugins.ActiveMQ
     internal class QueueConsumer : IDisposable
     {
         private readonly string queue;
-        private readonly string brokerUri;
-        private readonly string userName;
-        private readonly string password;
-        private readonly string clientId;
+        private ConnectionPool connectionPool;
         private bool isDisposed = false;
 
         private IMessageConsumer consumer;
         private ISession session;
         private IConnection connection;
 
-        public QueueConsumer(string queue, string brokerUri, string userName, string password, string clientId)
+        public event MessageReceivedDelegate OnMessageReceived;
+        public event OnDebug OnDebug;
+        public event OnError OnError;
+
+        public QueueConsumer(string queue, ConnectionPool connectionPool)
         {
             this.queue = queue;
-            this.brokerUri = brokerUri;
-            this.userName = userName;
-            this.password = password;
-            this.clientId = clientId;
+            this.connectionPool = connectionPool;
+            connection = connectionPool.GetConnection("consumer");
         }
 
         private void OnMessage(IMessage message)
@@ -40,9 +39,6 @@ namespace openplugins.ActiveMQ
             }
         }
 
-        public event MessageReceivedDelegate OnMessageReceived;
-        public event OnDebug OnDebug;
-        public event OnError OnError;
         public void Dispose()
         {
             OnDebug?.Invoke("Уничтожаем консюмера");
@@ -51,34 +47,20 @@ namespace openplugins.ActiveMQ
                 consumer?.Dispose();
                 session?.Dispose();
                 connection?.Dispose();
+                connectionPool.ClearConnection("consumer");
                 isDisposed = true;
             }
         }
 
         internal void Run()
         {
-            if (brokerUri == null)
-            {
-                throw new ArgumentNullException("brokerUri", "Broker URI not defined");
-            }
-            OnDebug?.Invoke("brokerUri: " + brokerUri);
-            try
-            {
-                IConnectionFactory connectionFactory = new ConnectionFactory(brokerUri);
-                connection = connectionFactory.CreateConnection(userName, password);
-                connection.ClientId = clientId;
-                session = connection.CreateSession();
-                OnDebug?.Invoke("Сессия создана");
-                consumer = session.CreateConsumer(session.GetQueue(queue));
-                consumer.Listener += new MessageListener(OnMessage);
-                OnDebug?.Invoke("Консюмер добавлен");
-                connection.Start();
-                OnDebug?.Invoke("Соединение запущено");
-            }
-            catch (Exception ex)
-            {
-                OnError?.Invoke("Can not start!", ex);
-            }
+            connection.Start();
+            OnDebug?.Invoke("Соединение для консюмера запущено");
+            session = connection.CreateSession();
+            OnDebug?.Invoke("Сессия для консюмера создана");
+            consumer = session.CreateConsumer(session.GetQueue(queue));
+            consumer.Listener += new MessageListener(OnMessage);
+            OnDebug?.Invoke("Консюмер добавлен");
         }
     }
 }

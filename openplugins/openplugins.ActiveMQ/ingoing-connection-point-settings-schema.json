@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек коннектора",
+
+  "properties": {
+
+    "debug": {
+      "type": "string",
+      "pattern": "(^true$)|(^false$)",
+      "description": "Признак работы в debug-режиме (логируется всё)"
+    },
+
+    "host":{
+      "type":"string",
+      "description": "Строка подключения к ActiveMQ"
+    },
+
+    "user":{
+      "type":"string",
+      "description": "Логин"
+    },
+
+    "password":{
+      "type":"string",
+      "description": "Пароль"
+    },
+
+    "queues":{
+      "type":"array",
+      "items": {
+        "type":"string"
+      },
+      "description": "Массив очередей, из которых будут выбираться сообщения"
+    }
+  },
+
+  "required": [ "host", "user", "password", "queues" ]
+}
