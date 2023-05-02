@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<PluginSettings xmlns="http://axelot.ru/esb/cc/2015/01" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://axelot.ru/esb/cc/2015/01 PluginManifest.xsd ">
+  <dotNET name="openplugins.Reflectors" targetPlatform="Windows" version="1.0.0.6">
+    <readme>Плагин с набором рефлекторов</readme>
+    <factories>
+      <factory description="openplugins: Рефлекторы для обработки сообщений" name="openplugins.Reflectors.OutgoingConnectionPointFactory, openplugins.Reflectors" type="Outgoing">
+        <parameters>
+          <parameter name="Settings" type="string">
+            <comment>JSON-строка с настройками (схема внутри архива плагина)</comment>
+          </parameter>
+        </parameters>
+      </factory>
+    </factories>
+  </dotNET>
+</PluginSettings>

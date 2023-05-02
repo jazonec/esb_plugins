@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="PluginInfo.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="PluginInfo.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3">
+      <GeneratePathProperty>True</GeneratePathProperty>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="ESB_ConnectionPoints.PluginsInterfaces">
+      <HintPath>..\ESB_ConnectionPoints.PluginsInterfaces.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="powershell [xml]$plugininfo = Get-Content '$(ProjectDir)PluginInfo.xml'; $version = $plugininfo.PluginSettings.dotNET.version -split '\.'; $version[3] = [int]$version[3]+1; $plugininfo.PluginSettings.dotNET.version = $version -Join '.'; $plugininfo.PluginSettings.dotNET.targetPlatform = 'Windows'; $plugininfo.Save('$(ProjectDir)PluginInfo.xml');" />
+  </Target>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="powershell Compress-Archive -Path '$(TargetDir)*.dll', '$(TargetDir)*.pdb', '$(TargetDir)*.xml', '$(TargetDir)*.json' -DestinationPath '$(SolutionDir)plugins\$(ProjectName).zip' -Force" />
+  </Target>
+
+</Project>
