@@ -17,3 +17,7 @@
 ### ActiveMQ connector
 Позволяет отправлять/получать сообщения в брокер ActiveMQ.
 [Подробно](/doc/ActiveMQ.md)
+
+### ActiveDirectory connector
+Позволяет получать/изменять объекты ActiveDirectory.
+[Подробно](/doc/ActiveDirectory.md)
