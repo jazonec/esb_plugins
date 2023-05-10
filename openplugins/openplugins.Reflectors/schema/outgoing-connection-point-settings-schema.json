@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек исходящей точки коннектора",
+  "properties": {
+    "debug": {
+      "type": "string",
+      "enum": [
+        "true",
+        "false"
+      ],
+      "description": "Признак работы в debug-режиме (логируется всё)"
+    },
+    "reflectors": {
+      "type": "array",
+      "description": "Массив с настройками рефлекторов",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "description": "Настройки рефлектора",
+            "properties": {
+              "reflector_type": {
+                "type": "string",
+                "enum": [ "blackHole" ],
+                "description": "Тип рефлектора"
+              },
+              "settings": {
+                "type": "object",
+                "description": "Описание типа blackHole",
+                "properties": {
+                  "type": {
+                    "type": "array",
+                    "description": "Массив типов сообщений",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "classId": {
+                    "type": "array",
+                    "description": "Массив классов сообщений",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "anyOf": [
+                  { "required": [ "type" ] },
+                  { "required": [ "classId" ] }
+                ]                
+              }
+            },
+            "required": ["reflector_type", "settings"]
+          },
+          {
+            "type": "object",
+            "description": "Настройки рефлектора",
+            "properties": {
+              "reflector_type": {
+                "type": "string",
+                "enum": [ "multiply" ],
+                "description": "Тип рефлектора"
+              },
+              "settings": {
+                "type": "object",
+                "description": "Описание типа multiply",
+                "properties": {
+                  "type": {
+                    "type": "array",
+                    "description": "Массив типов сообщений",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "classId": {
+                    "type": "array",
+                    "description": "Массив классов сообщений",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "amount": {
+                    "type": "integer",
+                    "description": "Количество возвращаемых сообщений"
+                  }
+                },
+                "anyOf": [
+                  { "required": [ "type", "amount" ] },
+                  { "required": [ "classId", "amount" ] }
+                ]
+              }
+            },
+            "required": [ "reflector_type", "settings" ]
+          },
+          {
+            "type": "object",
+            "description": "Настройки рефлектора",
+            "properties": {
+              "reflector_type": {
+                "type": "string",
+                "enum": [ "unbatch" ],
+                "description": "Тип рефлектора"
+              },
+              "settings": {
+                "type": "object",
+                "description": "Описание типа unbatch",
+                "properties": {
+                  "type": {
+                    "type": "array",
+                    "description": "Массив типов сообщений",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "classId": {
+                    "type": "string",
+                    "description": "Массив классов сообщений",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "pattern": {
+                    "type": "string",
+                    "description": "regex-выражение, которое будет применяться к тексту сообщения. Каждое совпадение будет отправляться в шину отдельным сообщением"
+                  },
+                  "responseType": {
+                    "type": "string",
+                    "description": "Тип возвращаемого сообщения"
+                  },
+                  "responseClassId": {
+                    "type": "string",
+                    "description": "Класс возвращаемого сообщения"
+                  }
+                },
+                "anyOf": [
+                  { "required": [ "type" ] },
+                  { "required": [ "classId" ] }
+                ],
+                "required": [ "pattern" ]
+              }
+            },
+            "required": [ "reflector_type", "settings" ]
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "reflectors"
+  ]
+}
