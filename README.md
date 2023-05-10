@@ -21,3 +21,7 @@
 ### ActiveDirectory connector
 Позволяет получать/изменять объекты ActiveDirectory.
 [Подробно](/doc/ActiveDirectory.md)
+
+### reflectors connector
+Позволяет обрабатывать сообщения и возвращать в шину результат обработки.
+[Подробно](/doc/reflectors.md)
