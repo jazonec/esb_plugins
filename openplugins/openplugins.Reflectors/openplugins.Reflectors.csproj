@@ -30,12 +30,18 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="schema\outgoing-connection-point-settings-schema.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <Exec Command="powershell [xml]$plugininfo = Get-Content '$(ProjectDir)PluginInfo.xml'; $version = $plugininfo.PluginSettings.dotNET.version -split '\.'; $version[3] = [int]$version[3]+1; $plugininfo.PluginSettings.dotNET.version = $version -Join '.'; $plugininfo.PluginSettings.dotNET.targetPlatform = 'Windows'; $plugininfo.Save('$(ProjectDir)PluginInfo.xml');" />
   </Target>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="powershell Compress-Archive -Path '$(TargetDir)*.dll', '$(TargetDir)*.pdb', '$(TargetDir)*.xml', '$(TargetDir)*.json' -DestinationPath '$(SolutionDir)plugins\$(ProjectName).zip' -Force" />
+    <Exec Command="powershell Compress-Archive -Path '$(TargetDir)*.dll', '$(TargetDir)*.pdb', '$(TargetDir)*.xml', '$(TargetDir)*.json', '$(TargetDir)schema\*.json' -DestinationPath '$(SolutionDir)plugins\$(ProjectName).zip' -Force" />
   </Target>
 
 </Project>
