@@ -13,3 +13,15 @@
 ### ReflectBatchMessage
 Позволяет сгруппировать одиночные сообщения в одно пакетное.
 [Подробно](/doc/reflectbatchmessage.md)
+
+### ActiveMQ connector
+Позволяет отправлять/получать сообщения в брокер ActiveMQ.
+[Подробно](/doc/ActiveMQ.md)
+
+### ActiveDirectory connector
+Позволяет получать/изменять объекты ActiveDirectory.
+[Подробно](/doc/ActiveDirectory.md)
+
+### reflectors connector
+Позволяет обрабатывать сообщения и возвращать в шину результат обработки.
+[Подробно](/doc/reflectors.md)

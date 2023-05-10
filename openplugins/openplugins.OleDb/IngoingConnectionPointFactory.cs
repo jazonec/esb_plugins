@@ -2,17 +2,13 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace openplugins.ActiveMQ
+namespace openplugins.OleDb
 {
-    public sealed class IngoingConnectionPointFactory : IIngoingConnectionPointFactory
+    public class IngoingConnectionPointFactory : IIngoingConnectionPointFactory
     {
         public const string SETTINGS_PARAMETER = "Settings";
-
-        IIngoingConnectionPoint IIngoingConnectionPointFactory.Create(Dictionary<string, string> parameters, IServiceLocator serviceLocator)
+        public IIngoingConnectionPoint Create(Dictionary<string, string> parameters, IServiceLocator serviceLocator)
         {
             JObject settings;
             if (!parameters.ContainsKey(SETTINGS_PARAMETER))
@@ -31,7 +27,7 @@ namespace openplugins.ActiveMQ
                 throw new FormatException("Некоректный json с настройками");
             }
 
-            return new ConsumerManager(settings, serviceLocator);
+            return new IngoingOleDbClient(settings, serviceLocator);
         }
     }
 }

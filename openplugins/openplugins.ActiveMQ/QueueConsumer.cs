@@ -7,41 +7,60 @@ namespace openplugins.ActiveMQ
 {
     internal class QueueConsumer : IDisposable
     {
-        private readonly string queueName = null;
-        private readonly IConnectionFactory connectionFactory;
-        private readonly IConnection connection;
-        private readonly ISession session;
-        private readonly IMessageConsumer consumer;
+        private readonly string queue;
+        private ConnectionPool connectionPool;
         private bool isDisposed = false;
 
-        public QueueConsumer(string queue, string brokerUri, string userName, string password, string clientId)
+        private IMessageConsumer consumer;
+        private ISession session;
+        private IConnection connection;
+
+        public event MessageReceivedDelegate OnMessageReceived;
+        public event OnDebug OnDebug;
+        public event OnError OnError;
+
+        public QueueConsumer(string queue, ConnectionPool connectionPool)
         {
-            queueName = queue;
-            connectionFactory = new ConnectionFactory(brokerUri);
-            connection = connectionFactory.CreateConnection(userName, password);
-            connection.ClientId = clientId;
-            connection.Start();
-            session = connection.CreateSession();
-            consumer = session.CreateConsumer(session.GetQueue(queue));
-            consumer.Listener += new MessageListener(OnMessage);
+            this.queue = queue;
+            this.connectionPool = connectionPool;
+            connection = connectionPool.GetConnection("consumer");
         }
 
         private void OnMessage(IMessage message)
         {
-            ITextMessage textMessage = message as ITextMessage;
-            OnMessageReceived?.Invoke(textMessage);
+            OnDebug?.Invoke("Прочитано сообщение: " + message.NMSMessageId);
+            try
+            {
+                OnMessageReceived?.Invoke(message);
+            }catch(Exception ex)
+            {
+                OnError?.Invoke("ERR!", ex);
+                throw;
+            }
         }
 
-        public event MessageReceivedDelegate OnMessageReceived;
         public void Dispose()
         {
+            OnDebug?.Invoke("Уничтожаем консюмера");
             if (!isDisposed)
             {
-                consumer.Dispose();
-                session.Dispose();
-                connection.Dispose();
+                consumer?.Dispose();
+                session?.Dispose();
+                connection?.Dispose();
+                connectionPool.ClearConnection("consumer");
                 isDisposed = true;
             }
+        }
+
+        internal void Run()
+        {
+            connection.Start();
+            OnDebug?.Invoke("Соединение для консюмера запущено");
+            session = connection.CreateSession();
+            OnDebug?.Invoke("Сессия для консюмера создана");
+            consumer = session.CreateConsumer(session.GetQueue(queue));
+            consumer.Listener += new MessageListener(OnMessage);
+            OnDebug?.Invoke("Консюмер добавлен");
         }
     }
 }

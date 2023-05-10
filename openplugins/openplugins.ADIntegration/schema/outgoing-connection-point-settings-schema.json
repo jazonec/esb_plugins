@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек исходящей точки коннектора",
+
+  "properties": {
+
+    "Debug": {
+      "type": "object",
+      "description": "Настройки отладки",
+      "properties": {
+        "DebugMode": {
+          "type": "string",
+          "pattern": "(^true$)|(^false$)",
+          "description": "Признак работы в debug-режиме (логируется всё)"
+        },
+        "StartDelay": {
+          "type": "integer",
+          "description": "Задержка запуска, сек."
+        }
+      }
+    },
+
+    "Ldap": {
+      "type": "object",
+      "description": "Настройки подключения к LDAP",
+      "properties": {
+        "Host": {
+          "type": "string",
+          "description": "Хост LDAP, (asmpo-avisma)"
+        },
+        "Port": {
+          "type": "integer",
+          "description": "Порт LDAP, 636 по умолчанию"
+        },
+        "Username": {
+          "type": "string",
+          "description": "Имя пользователя"
+        },
+        "Password": {
+          "type": "string",
+          "description": "Пароль"
+        }
+      },
+      "required": [ "Host", "Username", "Password" ]
+    }
+
+  },
+  "required": [ "Ldap" ]
+}

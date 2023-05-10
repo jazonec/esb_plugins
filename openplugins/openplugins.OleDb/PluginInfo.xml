@@ -1,16 +1,16 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <PluginSettings xmlns="http://axelot.ru/esb/cc/2015/01" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://axelot.ru/esb/cc/2015/01 PluginManifest.xsd ">
-  <dotNET name="openplugins.ActiveMQ" targetPlatform="Windows" version="1.0.2.17">
-    <readme>Подключение к брокеру ActiveMQ</readme>
+  <dotNET name="openplugins.OleDb" targetPlatform="Windows" version="1.0.0.8">
+    <readme>Подключение к ODBC-источнику</readme>
     <factories>
-      <factory description="openplugins: ActiveMQ-адаптер получения сообщений" name="openplugins.ActiveMQ.IngoingConnectionPointFactory, openplugins.ActiveMQ" type="Ingoing">
+      <factory description="openplugins: ODBC-адаптер получения сообщений" name="openplugins.OleDb.IngoingConnectionPointFactory, openplugins.OleDb" type="Ingoing">
         <parameters>
           <parameter name="Settings" type="string">
             <comment>JSON-строка с настройками</comment>
           </parameter>
         </parameters>
       </factory>
-      <factory description="openplugins: ActiveMQ-адаптер отправки сообщений" name="openplugins.ActiveMQ.OutgoingConnectionPointFactory, openplugins.ActiveMQ" type="Outgoing">
+      <factory description="openplugins: ODBC-адаптер отправки сообщений" name="openplugins.OleDb.OutgoingConnectionPointFactory, openplugins.OleDb" type="Outgoing">
         <parameters>
           <parameter name="Settings" type="string">
             <comment>JSON-строка с настройками</comment>

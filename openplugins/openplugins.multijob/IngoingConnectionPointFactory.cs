@@ -5,8 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
-namespace openplugins.ActiveMQ
+namespace openplugins.multijob
 {
     public sealed class IngoingConnectionPointFactory : IIngoingConnectionPointFactory
     {
@@ -31,7 +32,7 @@ namespace openplugins.ActiveMQ
                 throw new FormatException("Некоректный json с настройками");
             }
 
-            return new ConsumerManager(settings, serviceLocator);
+            return new MultiJobRunner(settings, serviceLocator);
         }
     }
 }
