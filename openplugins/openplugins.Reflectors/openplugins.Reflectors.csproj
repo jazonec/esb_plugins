@@ -19,9 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="EnyimMemcached" Version="2.16.0" />
+    <PackageReference Include="MongoDB.Driver" Version="2.19.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3">
       <GeneratePathProperty>True</GeneratePathProperty>
     </PackageReference>
+    <PackageReference Include="StackExchange.Redis" Version="2.6.111" />
   </ItemGroup>
 
   <ItemGroup>

@@ -11,11 +11,12 @@ namespace openplugins.Reflectors
     internal class ReflectorManager : IStandartOutgoingConnectionPoint
     {
         private readonly ILogger _logger;
-        private readonly IMessageFactory _messageFactory;
+        public readonly IMessageFactory _messageFactory;
         private readonly bool _debugMode;
         private readonly IDictionary<string, IReflector> typeReflectors;
         private readonly IDictionary<string, IReflector> classReflectors;
         private readonly IList<IReflector> reflectorsList;
+        private readonly JObject reflectors;
 
         public ReflectorManager(JObject settings, IServiceLocator serviceLocator)
         {
@@ -27,43 +28,12 @@ namespace openplugins.Reflectors
             classReflectors = new Dictionary<string, IReflector>();
             reflectorsList = new List<IReflector>();
 
-            var _reflectorsSettings = (JObject)settings["reflectors"];
-
-            // ChangeReflector
-            JObject _change = (JObject)_reflectorsSettings["change"];
-            if (_change != null)
-            {
-                CreateChangeReflector(_change);
-            }
-            // BatchReflector
-            JObject _batch = (JObject)_reflectorsSettings["batch"];
-            if (_batch != null)
-            {
-                CreateBatchReflector(_batch);
-            }
-            // BlackHole
-            JObject _blackHole = (JObject)_reflectorsSettings["blackHole"];
-            if (_blackHole != null)
-            {
-                CreateBlackHole(_blackHole);
-            }
-            // MultiplyReflector
-            JObject _multiply = (JObject)_reflectorsSettings["multiply"];
-            if (_multiply != null)
-            {
-                CreateMultiplyReflector(_multiply);
-            }
-            // UnBatchReflector
-            JObject _unbatch = (JObject)_reflectorsSettings["unbatch"];
-            if (_unbatch != null)
-            {
-                CreateUnbatchReflector(_unbatch);
-            }
+            reflectors = (JObject)settings["reflectors"];
         }
 
         private void CreateUnbatchReflector(JObject settings)
         {
-            UnbatchReflector unbatch = new UnbatchReflector(settings, _messageFactory);
+            UnbatchReflector unbatch = new UnbatchReflector(settings, this);
             reflectorsList.Add(unbatch);
             FillTypes(unbatch);
             FillClassIDs(unbatch);
@@ -71,7 +41,7 @@ namespace openplugins.Reflectors
 
         private void CreateMultiplyReflector(JObject settings)
         {
-            MultiplyReflector multiply = new MultiplyReflector(settings, _messageFactory);
+            MultiplyReflector multiply = new MultiplyReflector(settings, this);
             reflectorsList.Add(multiply);
             FillTypes(multiply);
             FillClassIDs(multiply);
@@ -79,7 +49,7 @@ namespace openplugins.Reflectors
 
         private void CreateBlackHole(JObject settings)
         {
-            BlackHole blackHole = new BlackHole(settings, _messageFactory);
+            BlackHole blackHole = new BlackHole(settings, this);
             reflectorsList.Add(blackHole);
             FillTypes(blackHole);
             FillClassIDs(blackHole);
@@ -90,9 +60,12 @@ namespace openplugins.Reflectors
             throw new NotImplementedException();
         }
 
-        private void CreateChangeReflector(JObject settings)
+        private void CreateChangedReflector(JObject settings)
         {
-            throw new NotImplementedException();
+            ChangedReflector changed = new ChangedReflector(settings, this);
+            reflectorsList.Add(changed);
+            FillTypes(changed);
+            FillClassIDs(changed);
         }
 
         private void FillTypes(IReflector reflector)
@@ -111,11 +84,11 @@ namespace openplugins.Reflectors
         {
             foreach (string classId in reflector.GetClassIDs())
             {
-                if (typeReflectors.ContainsKey(classId))
+                if (classReflectors.ContainsKey(classId))
                 {
                     throw new ArgumentException("Некорректные настройки, класс не может использоваться в нескольких рефлекторах.", classId);
                 }
-                typeReflectors.Add(classId, reflector);
+                classReflectors.Add(classId, reflector);
             }
         }
 
@@ -129,7 +102,7 @@ namespace openplugins.Reflectors
             WriteLogString("Передал в рефлекторы интерфейсы шины");
         }
 
-        private void WriteLogString(string log)
+        public void WriteLogString(string log)
         {
             if (_debugMode)
             {
@@ -152,6 +125,36 @@ namespace openplugins.Reflectors
 
         public void Initialize()
         {
+            // ChangeReflector
+            JObject _change = (JObject)reflectors["change"];
+            if (_change != null)
+            {
+                CreateChangedReflector(_change);
+            }
+            // BatchReflector
+            JObject _batch = (JObject)reflectors["batch"];
+            if (_batch != null)
+            {
+                CreateBatchReflector(_batch);
+            }
+            // BlackHole
+            JObject _blackHole = (JObject)reflectors["blackHole"];
+            if (_blackHole != null)
+            {
+                CreateBlackHole(_blackHole);
+            }
+            // MultiplyReflector
+            JObject _multiply = (JObject)reflectors["multiply"];
+            if (_multiply != null)
+            {
+                CreateMultiplyReflector(_multiply);
+            }
+            // UnBatchReflector
+            JObject _unbatch = (JObject)reflectors["unbatch"];
+            if (_unbatch != null)
+            {
+                CreateUnbatchReflector(_unbatch);
+            }
         }
 
         public void Run(IMessageSource messageSource, IMessageReplyHandler replyHandler, CancellationToken ct)
