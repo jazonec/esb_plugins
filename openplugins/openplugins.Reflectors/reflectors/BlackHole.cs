@@ -9,11 +9,13 @@ namespace openplugins.Reflectors
     {
         IMessageSource messageSource;
 
+        private readonly ReflectorManager manager;
         private readonly IList<string> types = new List<string>();
         private readonly IList<string> classIDs = new List<string>();
 
-        public BlackHole(JObject settings, IMessageFactory messageFactory)
+        public BlackHole(JObject settings, ReflectorManager manager)
         {
+            this.manager = manager;
             JArray typeArr = (JArray)settings["type"];
             if (typeArr != null)
             {
@@ -27,7 +29,7 @@ namespace openplugins.Reflectors
             {
                 foreach (string classId in classArr.Select(v => (string)v))
                 {
-                    types.Add(classId);
+                    classIDs.Add(classId);
                 }
             }
         }
@@ -43,6 +45,7 @@ namespace openplugins.Reflectors
         }
         public void ProceedMessage(Message message)
         {
+            manager.WriteLogString(string.Format("Отправляем сообщение {0} в корзину.", message.Id));
             messageSource.CompletePeekLock(message.Id);
         }
         public void Dispose()

@@ -12,16 +12,16 @@ namespace openplugins.Reflectors
         IMessageSource messageSource;
         IMessageReplyHandler replyHandler;
 
-        private readonly IMessageFactory messageFactory;
+        private readonly ReflectorManager manager;
         private readonly IList<string> types = new List<string>();
         private readonly IList<string> classIDs = new List<string>();
         private readonly string pattern;
         private readonly string responseType;
         private readonly string responseClassId;
 
-        public UnbatchReflector(JObject settings, IMessageFactory messageFactory)
+        public UnbatchReflector(JObject settings, ReflectorManager manager)
         {
-            this.messageFactory = messageFactory;
+            this.manager = manager;
             JArray typeArr = (JArray)settings["type"];
             if (typeArr != null)
             {
@@ -35,7 +35,7 @@ namespace openplugins.Reflectors
             {
                 foreach (string classId in classArr.Select(v => (string)v))
                 {
-                    types.Add(classId);
+                    classIDs.Add(classId);
                 }
             }
 
@@ -65,10 +65,11 @@ namespace openplugins.Reflectors
         {
             MatchCollection matches = Regex.Matches(Encoding.UTF8.GetString(message.Body), pattern, RegexOptions.Singleline);
 
+            manager.WriteLogString(string.Format("Для сообщения {0} Найдено {1} совпадений", message.Id, matches.Count));
             foreach (Match match in matches)
             {
                 Group group = match.Groups[0];
-                Message reflectMessage = messageFactory.CreateMessage(responseType);
+                Message reflectMessage = manager._messageFactory.CreateMessage(responseType);
                 reflectMessage.ClassId = responseClassId;
                 reflectMessage.Body = Encoding.UTF8.GetBytes(group.Value);
                 reflectMessage.Properties = message.Properties;

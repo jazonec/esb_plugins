@@ -1,5 +1,6 @@
 ﻿using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -9,15 +10,15 @@ namespace openplugins.Reflectors
     {
         IMessageSource messageSource;
         IMessageReplyHandler replyHandler;
-        readonly IMessageFactory messageFactory;
 
+        private readonly ReflectorManager manager;
         private readonly IList<string> types = new List<string>();
         private readonly IList<string> classIDs = new List<string>();
         private readonly int reflectAmount;
 
-        public MultiplyReflector(JObject settings, IMessageFactory messageFactory)
+        public MultiplyReflector(JObject settings, ReflectorManager manager)
         {
-            this.messageFactory = messageFactory;
+            this.manager = manager;
             JArray typeArr = (JArray)settings["type"];
             if (typeArr != null)
             {
@@ -31,7 +32,7 @@ namespace openplugins.Reflectors
             {
                 foreach (string classId in classArr.Select(v => (string)v))
                 {
-                    types.Add(classId);
+                    classIDs.Add(classId);
                 }
             }
             reflectAmount = (int)settings["amount"];
@@ -56,9 +57,10 @@ namespace openplugins.Reflectors
 
         public void ProceedMessage(Message message)
         {
+            manager.WriteLogString(String.Format("Умножаем сообщение {0}, количество {1}", message.Id, reflectAmount));
             for (int i=0; i<reflectAmount; i++)
             {
-                Message reflectMessage = messageFactory.CreateMessage(message.Type + "_reflect_" + (i + 1).ToString());
+                Message reflectMessage = manager._messageFactory.CreateMessage(message.Type + "_reflect_" + (i + 1).ToString());
                 reflectMessage.Body = message.Body;
                 reflectMessage.Properties = message.Properties;
                 replyHandler.HandleReplyMessage(reflectMessage);
