@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек исходящей точки коннектора",
+  "properties": {
+    "Debug": {
+      "type": "object",
+      "description": "Настройки отладки",
+      "properties": {
+        "DebugMode": {
+          "type": "string",
+          "pattern": "(^true$)|(^false$)",
+          "description": "Признак работы в debug-режиме (логируется всё)"
+        },
+        "StartDelay": {
+          "type": "integer",
+          "description": "Задержка запуска, сек."
+        }
+      }
+    },
+    "RmqServer": {
+      "type": "object",
+      "description": "Настройка подключения к RabbitMQ",
+      "properties": {
+        "HostName": {
+          "type": "string",
+          "description": "Хост сервера"
+        },
+        "Port": {
+          "type": "integer",
+          "description": "Порт сервера",
+          "default": 5672
+        },
+        "UserName": {
+          "type": "string",
+          "description": "Логин (имя пользователя)"
+        },
+        "Password": {
+          "type": "string",
+          "description": "Пароль пользователя"
+        },
+        "VirtualHost": {
+          "type": "string",
+          "description": "Виртуальный хост, по умолчанию '/'"
+        },
+        "ExchangeName": {
+          "type": "string",
+          "description": "Имя точки обмена",
+          "default": "esb"
+        }
+      },
+      "required": [ "ExchangeName" ]
+    }
+  }
+}

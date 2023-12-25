@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<PluginSettings xmlns="http://axelot.ru/esb/cc/2015/01" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://axelot.ru/esb/cc/2015/01 PluginManifest.xsd ">
+  <dotNET name="openplugins.RabbitMQ" targetPlatform="Windows" version="1.0.1.1">
+    <readme>Подключение к брокеру RabbitMQ</readme>
+    <factories>
+      <factory description="RabbitMQ-адаптер получения сообщений" name="openplugins.RabbitMQ.IngoingConnectionPointFactory, openplugins.RabbitMQ" type="Ingoing">
+        <parameters>
+          <parameter name="Settings" type="string">
+            <comment>JSON-строка с настройками</comment>
+          </parameter>
+        </parameters>
+      </factory>
+      <factory description="RabbitMQ-адаптер отправки сообщений" name="openplugins.RabbitMQ.OutgoingConnectionPointFactory, openplugins.RabbitMQ" type="Outgoing">
+        <parameters>
+          <parameter name="Settings" type="string">
+            <comment>JSON-строка с настройками</comment>
+          </parameter>
+        </parameters>
+      </factory>
+    </factories>
+  </dotNET>
+</PluginSettings>

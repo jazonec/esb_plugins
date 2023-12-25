@@ -1,0 +1,49 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="PluginInfo.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="PluginInfo.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="ESB_ConnectionPoints.PluginsInterfaces">
+      <HintPath>..\ESB_ConnectionPoints.PluginsInterfaces.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Update="schema\rmq-ingoing-connection-point-settings-schema.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="schema\rmq-outgoing-connection-point-settings-schema.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+  </ItemGroup>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="powershell [xml]$plugininfo = Get-Content '$(ProjectDir)PluginInfo.xml'; $version = $plugininfo.PluginSettings.dotNET.version -split '\.'; $version[3] = [int]$version[3]+1; $plugininfo.PluginSettings.dotNET.version = $version -Join '.'; $plugininfo.PluginSettings.dotNET.targetPlatform = 'Windows'; $plugininfo.Save('$(ProjectDir)PluginInfo.xml');" />
+  </Target>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="powershell Compress-Archive -Path '$(TargetDir)*.dll', '$(TargetDir)*.pdb', '$(TargetDir)*.xml', '$(TargetDir)*.json', '$(TargetDir)schema\*.json' -DestinationPath '$(SolutionDir)plugins\$(ProjectName).zip' -Force" />
+  </Target>
+
+</Project>
