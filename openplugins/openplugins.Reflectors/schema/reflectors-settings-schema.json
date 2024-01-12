@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек исходящей точки коннектора",
+  "properties": {
+    "debug": {
+      "type": "object",
+      "description": "Настройки отладки",
+      "properties": {
+        "DebugMode": {
+          "type": "string",
+          "pattern": "(^true$)|(^false$)",
+          "description": "Признак работы в debug-режиме (логируется всё)"
+        },
+        "StartDelay": {
+          "type": "integer",
+          "description": "Задержка запуска, сек."
+        }
+      }
+    },
+    "reflectors": {
+      "type": "object",
+      "description": "Настройки рефлектора",
+      "properties": {
+        "blackHole": {
+          "type": "object",
+          "description": "Настройки рефлектора 'черная дыра'",
+          "properties": {
+            "type": { "$ref": "#/$defs/string_array" },
+            "classID": { "$ref": "#/$defs/string_array" }
+          }
+        },
+        "multiply": {
+          "type": "object",
+          "description": "Настройки рефлектора 'умножитель'",
+          "properties": {
+            "type": { "$ref": "#/$defs/string_array" },
+            "classID": { "$ref": "#/$defs/string_array" },
+            "reflectAmount": {
+              "type": "integer",
+              "description": "Количество возвращаемых копий"
+            }
+          }
+        },
+        "changed": {
+          "type": "object",
+          "description": "Настройки рефлектора 'изменённые'",
+          "properties": {
+            "type": { "$ref": "#/$defs/string_array" },
+            "classID": { "$ref": "#/$defs/string_array" },
+            "mode": {
+              "type": "string",
+              "description": "Режим хранения кэшей, варианты mongo, redis, memcached",
+              "enum": [
+                "mongo",
+                "redis",
+                "memcached"
+              ]
+            },
+            "connectionString": {
+              "type": "string",
+              "description": "Строка подключения к сервису хранения кэшей"
+            }
+          },
+          "required": [ "mode", "connectionString" ]
+        },
+        "batch": {
+          "type": "object",
+          "description": "Настройки рефлектора 'объединятель'",
+          "properties": {
+            "type": { "$ref": "#/$defs/string_array" },
+            "classID": { "$ref": "#/$defs/string_array" }
+          }
+        },
+        "unbatch": {
+          "type": "object",
+          "description": "Настройки рефлектора 'разъединятель'",
+          "properties": {
+            "type": { "$ref": "#/$defs/string_array" },
+            "classID": { "$ref": "#/$defs/string_array" },
+            "pattern": {
+              "type": "string",
+              "description": "Паттерн поиска подстроки, regex-выражение"
+            },
+            "responseType": {
+              "type": "string",
+              "description": "Тип возвращаемого в шину сообщения"
+            },
+            "responseClassId": {
+              "type": "string",
+              "description": "Класс возвращаемого в шину сообщения"
+            }
+          },
+          "required": [ "pattern", "responseType", "responseClassId" ]
+        },
+        "encryptor": {
+          "type": "object",
+          "description": "Настройки рефлектора 'разъединятель'",
+          "properties": {
+            "type": { "$ref": "#/$defs/string_array" },
+            "classID": { "$ref": "#/$defs/string_array" },
+            "createRandomKey": {
+              "type": "boolean",
+              "description": "Создавать произвольный ключ для зашифровки сообщения"
+            },
+            "keyLenght": {
+              "type": "integer",
+              "description": "Длина создаваемого произвольного ключа"
+            },
+            "encodeKey": {
+              "type": "boolean",
+              "description": "Шифровать ключ"
+            },
+            "rsa": {
+              "type": "object",
+              "description": "Настройки RSA-шифрования для шифрования ключа",
+              "properties": {
+                "certificate": {
+                  "type": "string",
+                  "description": "Сертификат, который будет использоваться для RSA-шифрования ключа"
+                }
+              },
+              "required": [ "certificate" ]
+            }
+          },
+          "anyOf": [
+            {
+              "required": [ "classID" ]
+            },
+            {
+              "required": [ "type" ]
+            }
+          ],
+          "dependencies": {
+            "createRandomKey": [ "keyLenght" ],
+            "encodeKey": [ "rsa" ]
+          }
+        }
+      },
+      "anyOf": [
+        { "required": [ "blackHole" ] },
+        { "required": [ "multiply" ] },
+        { "required": [ "changed" ] },
+        { "required": [ "unbatch" ] },
+        { "required": [ "encryptor" ] }
+      ]
+    }
+  },
+  "required": [
+    "reflectors"
+  ],
+  "$defs": {
+    "string_array": {
+      "type": "array",
+      "description": "Массив типов или классов сообщений",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

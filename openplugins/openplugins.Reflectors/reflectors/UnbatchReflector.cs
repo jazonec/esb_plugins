@@ -13,35 +13,12 @@ namespace openplugins.Reflectors
         IMessageReplyHandler replyHandler;
 
         private readonly ReflectorManager manager;
-        private readonly IList<string> types = new List<string>();
-        private readonly IList<string> classIDs = new List<string>();
-        private readonly string pattern;
-        private readonly string responseType;
-        private readonly string responseClassId;
+        private readonly UnbatchSettings settings;
 
-        public UnbatchReflector(JObject settings, ReflectorManager manager)
+        public UnbatchReflector(UnbatchSettings settings, ReflectorManager manager)
         {
             this.manager = manager;
-            JArray typeArr = (JArray)settings["type"];
-            if (typeArr != null)
-            {
-                foreach (string type in typeArr.Select(v => (string)v))
-                {
-                    types.Add(type);
-                }
-            }
-            JArray classArr = (JArray)settings["classId"];
-            if (classArr != null)
-            {
-                foreach (string classId in classArr.Select(v => (string)v))
-                {
-                    classIDs.Add(classId);
-                }
-            }
-
-            pattern = (string)settings["pattern"];
-            responseType = (string)settings["responseType"];
-            responseClassId = (string)settings["responseClassId"];
+            this.settings = settings;
         }
 
         public IMessageSource MessageSource { set => messageSource = value; }
@@ -53,24 +30,24 @@ namespace openplugins.Reflectors
 
         public IList<string> GetClassIDs()
         {
-            return classIDs;
+            return settings.classID;
         }
 
         public IList<string> GetTypes()
         {
-            return types;
+            return settings.type;
         }
 
         public void ProceedMessage(Message message)
         {
-            MatchCollection matches = Regex.Matches(Encoding.UTF8.GetString(message.Body), pattern, RegexOptions.Singleline);
+            MatchCollection matches = Regex.Matches(Encoding.UTF8.GetString(message.Body), settings.pattern, RegexOptions.Singleline);
 
             manager.WriteLogString(string.Format("Для сообщения {0} Найдено {1} совпадений", message.Id, matches.Count));
             foreach (Match match in matches)
             {
                 Group group = match.Groups[0];
-                Message reflectMessage = manager._messageFactory.CreateMessage(responseType);
-                reflectMessage.ClassId = responseClassId;
+                Message reflectMessage = manager._messageFactory.CreateMessage(settings.responseType);
+                reflectMessage.ClassId = settings.responseClassId;
                 reflectMessage.Body = Encoding.UTF8.GetBytes(group.Value);
                 reflectMessage.Properties = message.Properties;
                 replyHandler.HandleReplyMessage(reflectMessage);

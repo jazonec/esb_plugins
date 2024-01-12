@@ -1,9 +1,7 @@
 ﻿using ESB_ConnectionPoints.PluginsInterfaces;
-using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Runtime;
 using System.Threading;
 
 namespace openplugins.Reflectors
@@ -12,60 +10,23 @@ namespace openplugins.Reflectors
     {
         private readonly ILogger _logger;
         public readonly IMessageFactory _messageFactory;
-        private readonly bool _debugMode;
+        private readonly DebugSettings _debugMode;
         private readonly IDictionary<string, IReflector> typeReflectors;
         private readonly IDictionary<string, IReflector> classReflectors;
         private readonly IList<IReflector> reflectorsList;
-        private readonly JObject reflectors;
+        private readonly PluginReflectors reflectors;
 
-        public ReflectorManager(JObject settings, IServiceLocator serviceLocator)
+        public ReflectorManager(PluginSettings settings, IServiceLocator serviceLocator)
         {
             _logger = serviceLocator.GetLogger(GetType());
-            _debugMode = (bool)settings["debug"];
+            _debugMode = settings.debug;
             _messageFactory = serviceLocator.GetMessageFactory();
 
             typeReflectors = new Dictionary<string, IReflector>();
             classReflectors = new Dictionary<string, IReflector>();
             reflectorsList = new List<IReflector>();
 
-            reflectors = (JObject)settings["reflectors"];
-        }
-
-        private void CreateUnbatchReflector(JObject settings)
-        {
-            UnbatchReflector unbatch = new UnbatchReflector(settings, this);
-            reflectorsList.Add(unbatch);
-            FillTypes(unbatch);
-            FillClassIDs(unbatch);
-        }
-
-        private void CreateMultiplyReflector(JObject settings)
-        {
-            MultiplyReflector multiply = new MultiplyReflector(settings, this);
-            reflectorsList.Add(multiply);
-            FillTypes(multiply);
-            FillClassIDs(multiply);
-        }
-
-        private void CreateBlackHole(JObject settings)
-        {
-            BlackHole blackHole = new BlackHole(settings, this);
-            reflectorsList.Add(blackHole);
-            FillTypes(blackHole);
-            FillClassIDs(blackHole);
-        }
-
-        private void CreateBatchReflector(JObject settings)
-        {
-            throw new NotImplementedException();
-        }
-
-        private void CreateChangedReflector(JObject settings)
-        {
-            ChangedReflector changed = new ChangedReflector(settings, this);
-            reflectorsList.Add(changed);
-            FillTypes(changed);
-            FillClassIDs(changed);
+            reflectors = settings.reflectors;
         }
 
         private void FillTypes(IReflector reflector)
@@ -104,10 +65,18 @@ namespace openplugins.Reflectors
 
         public void WriteLogString(string log)
         {
-            if (_debugMode)
+            if (_debugMode.DebugMode)
             {
                 _logger.Debug(log);
             }
+        }
+        public void WriteErrorString(string log)
+        {
+            _logger.Error(log);
+        }
+        public void WriteErrorString(string log, Exception ex)
+        {
+            _logger.Error(log, ex);
         }
 
         public void Cleanup()
@@ -125,45 +94,106 @@ namespace openplugins.Reflectors
 
         public void Initialize()
         {
-            // ChangeReflector
-            JObject _change = (JObject)reflectors["change"];
-            if (_change != null)
+            CreateReflector(reflectors.unbatch);
+            CreateReflector(reflectors.encryptor);
+            CreateReflector(reflectors.multiply);
+            CreateReflector(reflectors.blackHole);
+            CreateReflector(reflectors.batch);
+            CreateReflector(reflectors.changed);
+        }
+
+        private void CreateReflector(ChangedSettings changedSettings)
+        {
+            if (changedSettings != null)
             {
-                CreateChangedReflector(_change);
+                ChangedReflector changed = new ChangedReflector(changedSettings, this);
+                reflectorsList.Add(changed);
+                FillTypes(changed);
+                FillClassIDs(changed);
             }
-            // BatchReflector
-            JObject _batch = (JObject)reflectors["batch"];
-            if (_batch != null)
+            else
             {
-                CreateBatchReflector(_batch);
+                WriteLogString("Пустой blackHole, пропускаю");
             }
-            // BlackHole
-            JObject _blackHole = (JObject)reflectors["blackHole"];
-            if (_blackHole != null)
+        }
+
+        private void CreateReflector(BatchReflectorSettings batchSettings)
+        {
+            if (batchSettings != null)
             {
-                CreateBlackHole(_blackHole);
+                throw new NotImplementedException();
             }
-            // MultiplyReflector
-            JObject _multiply = (JObject)reflectors["multiply"];
-            if (_multiply != null)
+        }
+
+        private void CreateReflector(BlackHoleSettings blackHoleSettings)
+        {
+            if (blackHoleSettings != null)
             {
-                CreateMultiplyReflector(_multiply);
+                BlackHole blackhole = new BlackHole(blackHoleSettings, this);
+                reflectorsList.Add(blackhole);
+                FillTypes(blackhole);
+                FillClassIDs(blackhole);
             }
-            // UnBatchReflector
-            JObject _unbatch = (JObject)reflectors["unbatch"];
-            if (_unbatch != null)
+            else
             {
-                CreateUnbatchReflector(_unbatch);
+                WriteLogString("Пустой blackHole, пропускаю");
+            }
+        }
+
+        private void CreateReflector(MultiplySettings multiplySettings)
+        {
+            if (multiplySettings != null)
+            {
+                MultiplyReflector multiply = new MultiplyReflector(multiplySettings, this);
+                reflectorsList.Add(multiply);
+                FillTypes(multiply);
+                FillClassIDs(multiply);
+            }
+            else
+            {
+                WriteLogString("Пустой multiply, пропускаю");
+            }
+        }
+
+        private void CreateReflector(EncryptorSettings encryptorSettings)
+        {
+            if (encryptorSettings != null)
+            {
+                Encryptor encryptor = new Encryptor(encryptorSettings, this);
+                reflectorsList.Add(encryptor);
+                FillTypes(encryptor);
+                FillClassIDs(encryptor);
+            }
+            else
+            {
+                WriteLogString("Пустой encryptor, пропускаю");
+            }
+        }
+
+        private void CreateReflector(UnbatchSettings unbatchSettings)
+        {
+            if (unbatchSettings != null)
+            {
+                UnbatchReflector unbatch = new UnbatchReflector(unbatchSettings, this);
+                reflectorsList.Add(unbatch);
+                FillTypes(unbatch);
+                FillClassIDs(unbatch);
+            }
+            else
+            {
+                WriteLogString("Пустой unbatch, пропускаю");
             }
         }
 
         public void Run(IMessageSource messageSource, IMessageReplyHandler replyHandler, CancellationToken ct)
         {
-            if (_debugMode)
+            if (_debugMode.DebugMode)
             {
-                WriteLogString("20 секунд до старта!");
-                ct.WaitHandle.WaitOne(20000);
+                WriteLogString(String.Format("{0} секунд до старта!", _debugMode.StartDelay));
+                ct.WaitHandle.WaitOne(_debugMode.StartDelay * 1000);
             }
+
+            ChekSettings();
             _logger.Info(string.Format("Приступил к работе {0}", DateTime.Now.ToString()));
 
             FillReflectors(messageSource, replyHandler);
@@ -195,6 +225,18 @@ namespace openplugins.Reflectors
                 {
                     _logger.Error("Ошибка в потоке!", ex);
                 }
+            }
+        }
+
+        private void ChekSettings()
+        {
+            if (reflectorsList.Count == 0)
+            {
+                throw new ArgumentNullException("reflectors");
+            }
+            if (classReflectors.Count == 0 && typeReflectors.Count == 0)
+            {
+                throw new ArgumentNullException("classId & type");
             }
         }
     }

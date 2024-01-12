@@ -1,8 +1,7 @@
 ﻿using ESB_ConnectionPoints.PluginsInterfaces;
-using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Xml.Linq;
 
 namespace openplugins.Reflectors
 {
@@ -15,12 +14,12 @@ namespace openplugins.Reflectors
             {
                 throw new ArgumentException(string.Format("Не задан параметр <{0}>", SETTINGS_PARAMETER));
             }
-            var settingsString = parameters[SETTINGS_PARAMETER];
+            string settingsString = parameters[SETTINGS_PARAMETER];
 
-            JObject settings;
+            PluginSettings settings = new PluginSettings();
             try
             {
-                settings = JObject.Parse(settingsString);
+                settings = JsonConvert.DeserializeObject<PluginSettings>(settingsString);
             }
             catch (Exception ex)
             {

@@ -1,9 +1,5 @@
 ﻿using ESB_ConnectionPoints.PluginsInterfaces;
-using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Xml.Linq;
 
 namespace openplugins.Reflectors
 {
@@ -13,48 +9,27 @@ namespace openplugins.Reflectors
         IMessageReplyHandler replyHandler;
 
         private readonly ReflectorManager manager;
-        private readonly IList<string> types = new List<string>();
-        private readonly IList<string> classIDs = new List<string>();
+        private readonly ChangedSettings settings;
         private readonly MessageHashChecker hashChecker;
 
-        public ChangedReflector(JObject settings, ReflectorManager manager)
+        public ChangedReflector(ChangedSettings settings, ReflectorManager manager)
         {
             this.manager = manager;
-            JArray typeArr = (JArray)settings["type"];
-            if (typeArr != null)
-            {
-                foreach (string type in typeArr.Select(v => (string)v))
-                {
-                    types.Add(type);
-                }
-            }
-            JArray classArr = (JArray)settings["classId"];
-            if (classArr != null)
-            {
-                foreach (string classId in classArr.Select(v => (string)v))
-                {
-                    classIDs.Add(classId);
-                }
-            }
-            string connectionString = null;
-            if (settings.ContainsKey("connectionString"))
-            {
-                connectionString = (string)settings["connectionString"];
-            }
-            string checkerType = (string)settings["mode"];
-            switch (checkerType)
+            this.settings = settings;
+
+            switch (settings.mode)
             {
                 case "redis":
-                    hashChecker = new MessageHashCheckerRedis(connectionString);
+                    hashChecker = new MessageHashCheckerRedis(settings.connectionString);
                     break;
                 case "mongo":
-                    hashChecker = new MessageHashCheckerMongoDB(connectionString);
+                    hashChecker = new MessageHashCheckerMongoDB(settings.connectionString);
                     break;
                 default:
-                    hashChecker = new MessageHashCheckerMemcached(connectionString);
+                    hashChecker = new MessageHashCheckerMemcached(settings.connectionString);
                     break;
             }
-            manager.WriteLogString(string.Format("Подключен hashChecker, тип {0}, строка подключения {1}", checkerType, connectionString));
+            manager.WriteLogString(string.Format("Подключен hashChecker, тип {0}, строка подключения {1}", settings.mode, settings.connectionString));
         }
 
         public IMessageSource MessageSource { set => messageSource = value; }
@@ -66,12 +41,12 @@ namespace openplugins.Reflectors
 
         public IList<string> GetClassIDs()
         {
-            return classIDs;
+            return settings.classID;
         }
 
         public IList<string> GetTypes()
         {
-            return types;
+            return settings.type;
         }
 
         public void ProceedMessage(Message message)

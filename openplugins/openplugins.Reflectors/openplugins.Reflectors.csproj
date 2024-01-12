@@ -34,7 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="schema\outgoing-connection-point-settings-schema.json">
+    <None Update="schema\reflectors-settings-schema.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
