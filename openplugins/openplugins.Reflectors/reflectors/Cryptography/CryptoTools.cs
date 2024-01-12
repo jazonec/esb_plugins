@@ -20,18 +20,27 @@ namespace openplugins.Reflectors
             {
                 throw new ArgumentNullException(nameof(settings.certificate));
             }
-            X509Certificate2 _RSACert = new X509Certificate2(settings.certificate);
+            byte[] _rawdata = Encoding.UTF8.GetBytes(settings.certificate);
+            X509Certificate2 _RSACert = new X509Certificate2(_rawdata);
             _publicKey = _RSACert.GetRSAPublicKey();
             _privateKey = _RSACert.GetRSAPrivateKey();
         }
 
         public byte[] Encrypt_RSA(byte[] plainText)
         {
+            if (_publicKey == null)
+            {
+                throw new Exception("Не инициализирован публичный ключ!");
+            }
             return _publicKey.Encrypt(plainText, _padding);
         }
 
         public byte[] Decrypt_RSA(byte[] ciperText)
         {
+            if (_privateKey == null)
+            {
+                throw new Exception("Не инициализирован приватный ключ!");
+            }
             return _privateKey.Decrypt(ciperText, _padding);
         }
 
