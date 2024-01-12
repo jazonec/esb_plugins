@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Channels;
 
 namespace openplugins.Reflectors
 {
@@ -100,6 +101,22 @@ namespace openplugins.Reflectors
             CreateReflector(reflectors.blackHole);
             CreateReflector(reflectors.batch);
             CreateReflector(reflectors.changed);
+            CreateReflector(reflectors.decryptor);
+        }
+
+        private void CreateReflector(DecryptorSettings decryptorSettings)
+        {
+            if (decryptorSettings != null)
+            {
+                Decryptor decryptor = new Decryptor(decryptorSettings, this);
+                reflectorsList.Add(decryptor);
+                FillTypes(decryptor);
+                FillClassIDs(decryptor);
+            }
+            else
+            {
+                WriteLogString("Пустой decryptor, пропускаю");
+            }
         }
 
         private void CreateReflector(ChangedSettings changedSettings)

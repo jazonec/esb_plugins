@@ -20,7 +20,7 @@ namespace openplugins.Reflectors
             {
                 throw new ArgumentNullException(nameof(settings.certificate));
             }
-            byte[] _rawdata = Encoding.UTF8.GetBytes(settings.certificate);
+            byte[] _rawdata = Convert.FromBase64String(settings.certificate);
             X509Certificate2 _RSACert = new X509Certificate2(_rawdata);
             _publicKey = _RSACert.GetRSAPublicKey();
             _privateKey = _RSACert.GetRSAPrivateKey();

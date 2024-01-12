@@ -9,12 +9,13 @@ namespace openplugins.Reflectors
     }
     internal class PluginReflectors
     {
-        public EncryptorSettings encryptor;
-        public UnbatchSettings unbatch;
-        public MultiplySettings multiply;
         public BlackHoleSettings blackHole;
-        public BatchReflectorSettings batch;
+        public MultiplySettings multiply;
         public ChangedSettings changed;
+        public BatchReflectorSettings batch;
+        public UnbatchSettings unbatch;
+        public EncryptorSettings encryptor;
+        public DecryptorSettings decryptor;
     }
     internal class ChangedSettings : ReflectorSettings
     {
@@ -49,6 +50,16 @@ namespace openplugins.Reflectors
             createRandomKey = false;
             encodeKey = false;
         }
+    }
+    internal class DecryptorSettings : ReflectorSettings
+    {
+        public DecryptorSettings()
+        {
+            decodeKey = false;
+        }
+
+        public bool decodeKey { set; get; }
+        public RsaSettings rsa { set; get; }
     }
     internal class DebugSettings
     {

@@ -1,26 +1,25 @@
 ﻿using ESB_ConnectionPoints.PluginsInterfaces;
-using MongoDB.Bson;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace openplugins.Reflectors
 {
-    internal class Encryptor : IReflector
+    internal class Decryptor : IReflector
     {
         IMessageSource messageSource;
         IMessageReplyHandler replyHandler;
 
-        private readonly EncryptorSettings settings;
+        private readonly DecryptorSettings settings;
         private readonly ReflectorManager manager;
         private readonly CryptoTools cryptoTools;
 
-        public Encryptor(EncryptorSettings settings, ReflectorManager manager)
+        public Decryptor(DecryptorSettings settings, ReflectorManager manager)
         {
-            this.manager = manager;
             this.settings = settings;
+            this.manager = manager;
 
-            if (settings.encodeKey)
+            if (settings.decodeKey)
             {
                 cryptoTools = new CryptoTools(settings.rsa);
             }
@@ -28,7 +27,6 @@ namespace openplugins.Reflectors
 
         public IMessageSource MessageSource { set => messageSource = value; }
         public IMessageReplyHandler ReplyHandler { set => replyHandler = value; }
-
         public void Dispose()
         {
         }
@@ -48,34 +46,27 @@ namespace openplugins.Reflectors
             Message reflectMessage = manager._messageFactory.CreateMessage(message.Type);
             reflectMessage.ClassId = message.ClassId;
             reflectMessage.Properties = message.Properties;
-            byte[] key;
+            byte[] _key;
 
             try
             {
-                if (settings.createRandomKey)
+                if (settings.decodeKey)
                 {
-                    key = CryptoTools.RandomString(settings.keyLenght);
-                    reflectMessage.SetPropertyWithValue("key", Encoding.UTF8.GetString(key));
+                    var encodedKey = Convert.FromBase64String(message.GetPropertyValue<string>("encodedKey"));
+                    _key = cryptoTools.Decrypt_RSA(encodedKey);
+                    manager.WriteLogString("Расшифрованный ключ: " + Encoding.UTF8.GetString(_key));
                 }
                 else
                 {
-                    string strKey = message.GetPropertyValue<string>("key");
-                    key = Encoding.UTF8.GetBytes(strKey);
+                    _key = Encoding.UTF8.GetBytes(message.GetPropertyValue<string>("key"));
                 }
-
-                reflectMessage.Body = CryptoTools.EncryptStringToBytes_Aes(Encoding.UTF8.GetString(message.Body), key);
-
-                if (settings.encodeKey)
-                {
-                    string encodedKey = Convert.ToBase64String(cryptoTools.Encrypt_RSA(key));
-                    reflectMessage.SetPropertyWithValue("encodedKey", encodedKey);
-                    manager.WriteLogString("Зашифрованный ключ: " + encodedKey);
-                }
+                reflectMessage.Body = Encoding.UTF8.GetBytes(CryptoTools.DecryptStringFromBytes_Aes(message.Body, _key));
                 replyHandler.HandleReplyMessage(reflectMessage);
                 messageSource.CompletePeekLock(message.Id);
-            }catch (Exception ex)
+            }
+            catch (Exception ex)
             {
-                manager.WriteErrorString("Произошла ошибка при кодировании сообщения!", ex);
+                manager.WriteErrorString("Произошла ошибка при декодировании сообщения!", ex);
                 messageSource.CompletePeekLock(message.Id, MessageHandlingError.RejectedMessage, ex.Message);
             }
         }

@@ -94,7 +94,7 @@
         },
         "encryptor": {
           "type": "object",
-          "description": "Настройки рефлектора 'разъединятель'",
+          "description": "Настройки рефлектора 'шифровщик'",
           "properties": {
             "type": { "$ref": "#/$defs/string_array" },
             "classID": { "$ref": "#/$defs/string_array" },
@@ -116,7 +116,7 @@
               "properties": {
                 "certificate": {
                   "type": "string",
-                  "description": "Сертификат, который будет использоваться для RSA-шифрования ключа"
+                  "description": "Сертификат, который будет использоваться для RSA-шифрования ключа. Base64-кодированное содержимое pfx-файла."
                 }
               },
               "required": [ "certificate" ]
@@ -133,6 +133,40 @@
           "dependencies": {
             "createRandomKey": [ "keyLenght" ],
             "encodeKey": [ "rsa" ]
+          }
+        },
+        "decryptor": {
+          "type": "object",
+          "description": "Настройки рефлектора 'дешифровщик'",
+          "properties": {
+            "type": { "$ref": "#/$defs/string_array" },
+            "classID": { "$ref": "#/$defs/string_array" },
+            "decodeKey": {
+              "type": "boolean",
+              "description": "Дешифровать ключ"
+            },
+            "rsa": {
+              "type": "object",
+              "description": "Настройки RSA-шифрования для расшифровки ключа",
+              "properties": {
+                "certificate": {
+                  "type": "string",
+                  "description": "Сертификат, который будет использоваться для RSA-расшифровки ключа. Base64-кодированное содержимое pfx-файла."
+                }
+              },
+              "required": [ "certificate" ]
+            }
+          },
+          "anyOf": [
+            {
+              "required": [ "classID" ]
+            },
+            {
+              "required": [ "type" ]
+            }
+          ],
+          "dependencies": {
+            "decodeKey": [ "rsa" ]
           }
         }
       },
