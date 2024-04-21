@@ -130,7 +130,7 @@ namespace openplugins.Reflectors
             }
             else
             {
-                WriteLogString("Пустой blackHole, пропускаю");
+                WriteLogString("Пустой changed, пропускаю");
             }
         }
 
@@ -236,6 +236,7 @@ namespace openplugins.Reflectors
                     else
                     {
                         messageSource.CompletePeekLock(message.Id, MessageHandlingError.RejectedMessage, "Отсутствует настройка для типа или класса сообщения!");
+                        _logger.Error(string.Format("Отсутствует настройка для типа:{0} или класса:{1}!", message.Type, message.ClassId));
                     }
                 }
                 catch (Exception ex)

@@ -61,7 +61,7 @@
               "description": "Строка подключения к сервису хранения кэшей"
             }
           },
-          "required": [ "mode", "connectionString" ]
+          "required": [ "mode" ]
         },
         "batch": {
           "type": "object",
@@ -176,7 +176,8 @@
         { "required": [ "changed" ] },
         { "required": [ "unbatch" ] },
         { "required": [ "encryptor" ] }
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   "required": [
