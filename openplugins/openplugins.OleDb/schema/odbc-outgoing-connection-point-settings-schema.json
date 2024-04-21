@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек исходящей точки коннектора",
+
+  "properties": {
+
+    "Debug": {
+      "type": "object",
+      "description": "Настройки отладки",
+      "properties": {
+        "DebugMode": {
+          "type": "boolean",
+          "description": "Признак работы в debug-режиме (логируется всё)"
+        },
+        "StartDelay": {
+          "type": "integer",
+          "description": "Задержка запуска, сек."
+        }
+      }
+    },
+
+    "Connection": {
+      "type": "object",
+      "description": "Настройки подключения к источнику",
+      "properties": {
+        "ConnectionString": {
+          "type": "string",
+          "description": "Строка подключения"
+        },
+        "UsePool": {
+          "type": "boolean",
+          "description": "Использовать пул подключений"
+        },
+        "PoolSize": {
+          "type": "integer",
+          "description": "Размер пула подключений"
+        }
+      },
+      "required": [ "ConnectionString" ]
+    }
+
+  },
+  "required": [ "Connection" ]
+}

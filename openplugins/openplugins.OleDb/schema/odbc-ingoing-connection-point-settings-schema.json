@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema",
+  "title": "JSON-схема для настроек входящей точки коннектора",
+
+  "properties": {
+
+    "Debug": {
+      "type": "object",
+      "description": "Настройки отладки",
+      "properties": {
+        "DebugMode": {
+          "type": "boolean",
+          "description": "Признак работы в debug-режиме (логируется всё)"
+        },
+        "StartDelay": {
+          "type": "integer",
+          "description": "Задержка запуска, сек."
+        }
+      }
+    },
+
+    "Connection": {
+      "type": "object",
+      "description": "Настройки подключения к источнику",
+      "properties": {
+        "ConnectionString": {
+          "type": "string",
+          "description": "Строка подключения"
+        },
+        "UsePool": {
+          "type": "boolean",
+          "description": "Использовать пул подключений"
+        },
+        "PoolSize": {
+          "type": "integer",
+          "description": "Размер пула подключений"
+        }
+      },
+      "required": ["ConnectionString"]
+    },
+
+    "Commands": {
+      "type": "array",
+      "description": "Массив запросов к источнику",
+      "items": {
+        "type": "object",
+        "description": "Описание запроса выборки данных из источника",
+        "properties": {
+          "Name": {
+            "type": "string",
+            "description": "Название запроса"
+          },
+          "SQL": {
+            "type": "string",
+            "description": "SQL-выражение, выбирающее данные из источника"
+          },
+          "MessageType": {
+            "type": "string",
+            "description": "Тип сообщения, отправляемого в шину, если не заполнено тогда RecordSet"
+          },
+          "MessageClassId": {
+            "type": "string",
+            "description": "Класс сообщения, отправляемого в шину"
+          },
+          "Cron": {
+            "type": "string",
+            "description": "Расписание запуска в формате cron, см. https://www.freeformatter.com/cron-expression-generator-quartz.html"
+          },
+          "SendEachRow": {
+            "type": "boolean",
+            "description": "Признак отправки каждой строки отдельным сообщением. Если ложь - результат запроса будет отправлен одним сообщением"
+          },
+          "ExecuteAfterSend": {
+            "type": "boolean",
+            "description": "Если истина, выполнить команду после успешной отправки сообщения в шину"
+          },
+          "CommandAfterSend": {
+            "type": "object",
+            "description": "Настройки команды, которая будет выполняться для отправленного в шину сообщения",
+            "properties": {
+              "SQL": {
+                "type": "string",
+                "description": "SQL-команда"
+              },
+              "Parameters": {
+                "type": "array",
+                "description": "массив параметров SQL-команды",
+                "items": {
+                  "type": "object",
+                  "description": "Описание параметра",
+                  "properties": {
+                    "Name": {
+                      "type": "string",
+                      "description": "Название параметра"
+                    },
+                    "ParameterType": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 3,
+                      "description": "Тип параметра, 0 - дата+время в формате 'YYYY-MM-DD hh:mm:ss', 1 - целое число, 2 - строка, 3 - десятичное число"
+                    },
+                    "JsonPath": {
+                      "type": "string",
+                      "description": "JSON-path для вычисления значения, применяется к данным отправленного в шину сообщения"
+                    }
+                  },
+                  "required": [ "ParameterType", "JsonPath" ]
+                }
+              }
+            },
+            "required": [ "SQL" ]
+          }
+        },
+        "required": [ "Name", "SQL", "ExecuteAfterSend" ]
+      }
+    }
+  },
+  "required": [ "Connection", "Commands" ]
+}
