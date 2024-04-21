@@ -6,8 +6,7 @@ namespace openplugins.ADIntegration
     {
         public LdapSettings Ldap { set; get; }
         public DebugSettings Debug { set; get; }
-        public ReadUsers Users { set; get; }
-        public ReadGroups Groups { set; get; }
+        public List<ReadObjects> Jobs { set; get; }
     }
     internal class OutgoingSettings
     {
@@ -15,8 +14,6 @@ namespace openplugins.ADIntegration
         public DebugSettings Debug { get; set; }
         public string DefaultOU { get; set; }
         public Dictionary<string, AdTypes> Fields { set; get; }
-        public string ClassIdRequest { get; set; }
-        public string ClassIdResponse { get; set; }
     }
     internal class LdapSettings
     {
@@ -41,19 +38,13 @@ namespace openplugins.ADIntegration
         public bool DebugMode { set; get; }
         public int StartDelay { set; get; }
     }
-    internal class ReadUsers
+    internal class ReadObjects
     {
+        public string Name { set; get; }
         public bool DebugMode { set; get; }
         public string[] Fields { set; get; }
         public string ClassId { set; get; }
         public string Cron { set; get; }
-    }
-    internal class ReadGroups
-    {
-        public bool DebugMode { set; get; }
-        public string[] Fields { set; get; }
-        public string ClassId { set; get; }
-        public string Cron { set; get; }
-        public string GroupFilter { get; set; }
+        public string ObjectFilter { get; set; }
     }
 }

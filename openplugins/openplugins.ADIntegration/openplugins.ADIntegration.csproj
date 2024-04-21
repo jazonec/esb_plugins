@@ -73,12 +73,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ADObjectsCreator.cs" />
-    <Compile Include="ADObjectsIngoing.cs" />
     <Compile Include="ConnectionPointFactories.cs" />
-    <Compile Include="Ingoing\GroupsJob.cs" />
     <Compile Include="Ingoing\IngoingManager.cs" />
-    <Compile Include="Ingoing\UsersJob.cs" />
+    <Compile Include="Ingoing\ObjectJob.cs" />
     <Compile Include="Utils\LdapConnection.cs" />
     <Compile Include="Outgoing\OutgoingManager.cs" />
     <Compile Include="Utils\Utils.cs" />
@@ -93,10 +90,10 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
-    <Content Include="schema\outgoing-connection-point-settings-schema.json">
+    <Content Include="schema\ad-outgoing-connection-point-settings-schema.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="schema\ingoing-connection-point-settings-schema.json">
+    <Content Include="schema\ad-ingoing-connection-point-settings-schema.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -33,18 +33,6 @@ namespace openplugins.ADIntegration
             JObject _retVal = Serialize(entity, fields);
             return _retVal;
         }
-        internal static JObject SerializeUser(SearchResult sr, string[] fields)
-        {
-            JObject _retVal = Serialize(sr, fields);
-            _retVal.Add("members", GetUserGroups(sr.Properties["samAccountName"][0].ToString()));
-            return _retVal;
-        }
-        internal static JObject SerializeGroup(SearchResult sr, string[] fields, List<SearchResult> members)
-        {
-            JObject _retVal = Serialize(sr, fields);
-            _retVal.Add("members", SerializeList(members, "member", fields: new string[] { "name" }));
-            return _retVal;
-        }
         private static JObject SerializeList(List<SearchResult> list, string elementName, string[] fields)
         {
             JArray _lines = new JArray();
@@ -70,9 +58,10 @@ namespace openplugins.ADIntegration
                 {
                     case "objectSid":
                     case "objectGuid":
+                    case "members":
                         break;
                     case "useraccountcontrol":
-                        _resultObject.Add("enabled", !Convert.ToBoolean((int)entity.Properties["useraccountcontrol"][0] & 0x0002));
+                        _resultObject.Add("enabled", !Convert.ToBoolean((int)entity.Properties["userAccountControl"][0] & 0x0002));
                         break;
                     case "whenChanged":
                     case "whenCreated":
@@ -82,6 +71,10 @@ namespace openplugins.ADIntegration
                     case "lastLogon":
                         var lastLogonTime = DateTime.FromFileTime(entity.Properties[key].Count == 0 ? 0 : ((long)entity.Properties[key][0]));
                         _resultObject.Add(key.ToLower(), lastLogonTime.ToString("s"));
+                        break;
+                    case "enabled":
+                        int flags = (int)entity.Properties["userAccountControl"].Value;
+                        _resultObject.Add(key.ToLower(), !Convert.ToBoolean(flags & 0x0002));
                         break;
                     default:
                         _resultObject.Add(key.ToLower(), entity.Properties[key].Count == 0 ? "" : entity.Properties[key][0].ToString());
@@ -104,8 +97,10 @@ namespace openplugins.ADIntegration
                 {
                     case "objectSid":
                     case "objectGuid":
+                    case "members":
                         break;
                     case "useraccountcontrol":
+                    case "enabled":
                         _resultObject.Add("enabled", !Convert.ToBoolean((int)sr.Properties["useraccountcontrol"][0] & 0x0002));
                         break;
                     case "whenChanged":
@@ -117,6 +112,30 @@ namespace openplugins.ADIntegration
                         var lastLogonTime = DateTime.FromFileTime(sr.Properties[key].Count == 0 ? 0 : ((long)sr.Properties[key][0]));
                         _resultObject.Add(key.ToLower(), lastLogonTime.ToString("s"));
                         break;
+                    case "pwdLastSet":
+                        string _lastSet;
+                        try
+                        {
+                            _lastSet = DateTime.FromFileTime((long)sr.Properties[key][0]).ToString("s");
+                        }
+                        catch
+                        {
+                            _lastSet = string.Empty;
+                        }
+                        _resultObject.Add(key.ToLower(), _lastSet);
+                        break;
+                    case "msDS-UserPasswordExpiryTimeComputed":
+                        string daysLeft;
+                        try
+                        {
+                            daysLeft = DateTime.FromFileTime((long)sr.Properties[key][0]).ToString("s");
+                        }
+                        catch (Exception)
+                        {
+                            daysLeft = string.Empty;
+                        }
+                        _resultObject.Add("passwordexpires", daysLeft);
+                        break;
                     default:
                         _resultObject.Add(key.ToLower(), sr.Properties[key].Count == 0 ? "" : sr.Properties[key][0].ToString());
                         break;
@@ -124,37 +143,36 @@ namespace openplugins.ADIntegration
             }
             return _resultObject;
         }
-        private static JObject GetUserGroups(string samAccountName)
+        internal static JObject SerializeGroup(DirectoryEntry entity, bool added)
         {
-            JObject _groups = new JObject();
-
-            /*using (PrincipalContext context = new PrincipalContext(ContextType.Domain, _adPath, _adUser, _adPwd))
-            {
-                UserPrincipal user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, samAccountName);
-
-                PrincipalSearchResult<Principal> groups = user.GetAuthorizationGroups();
-                JArray _groupLine = new JArray();
-                foreach (Principal grp in groups)
-                {
-                    if (!ct.IsCancellationRequested)
+            string key;
+            JObject _resultObject = new JObject
                     {
-                        JObject _group = new JObject
-                        {
-                            { "guid", grp.Guid },
-                            { "sid", grp.Sid.ToString() },
-                            { "name", grp.Name },
-                            { "description", grp.Description },
-                            { "samaccountname", grp.SamAccountName },
-                            { "distinguishedname", grp.DistinguishedName }
-                        };
-                        _groupLine.Add(_group);
-                    }
-                    else
-                        return new JObject();
-                }
-                _groups.Add("group", _groupLine);
-            }*/
-            return _groups;
+                        { "guid", GetAdObjectGuid(entity) },
+                        { "sid", GetAdObjectSid(entity) }
+            };
+            key = "distinguishedName";
+            _resultObject.Add(key.ToLower(), entity.Properties[key][0].ToString());
+            key = "whenChanged";
+            _resultObject.Add(key.ToLower(), entity.Properties[key].Count == 0 ? "" : ((DateTime)entity.Properties[key][0]).ToString("s"));
+            key = "whenCreated";
+            _resultObject.Add(key.ToLower(), entity.Properties[key].Count == 0 ? "" : ((DateTime)entity.Properties[key][0]).ToString("s"));
+            key = "member";
+            _resultObject.Add(key.ToLower(), entity.Properties[key].Count == 0 ? "" : entity.Properties[key][0].ToString());
+            key = "enabled";
+            _resultObject.Add(key.ToLower(), added);
+            return _resultObject;
+        }
+        internal static JObject SerializeObject(SearchResult sr, string[] fields, List<SearchResult> members)
+        {
+            JObject _retVal = Serialize(sr, fields);
+            _retVal.Add("members", SerializeList(members, "member", fields: new string[] { "name", "employeeNumber" }));
+            return _retVal;
+        }
+        internal static JObject SerializeObject(SearchResult sr, string[] fields)
+        {
+            JObject _retVal = Serialize(sr, fields);
+            return _retVal;
         }
     }
 }

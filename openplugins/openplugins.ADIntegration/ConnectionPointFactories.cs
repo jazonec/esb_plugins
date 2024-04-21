@@ -16,7 +16,7 @@ namespace openplugins.ADIntegration
             //JObject settings;
             if (!parameters.ContainsKey(SETTINGS_PARAMETER))
             {
-                throw new ArgumentException(String.Format("Не задан параметр <{0}>", SETTINGS_PARAMETER));
+                throw new ArgumentException(string.Format("Не задан параметр <{0}>", SETTINGS_PARAMETER));
             }
             var settingsString = parameters[SETTINGS_PARAMETER];
 

@@ -9,8 +9,7 @@
       "description": "Настройки отладки",
       "properties": {
         "DebugMode": {
-          "type": "string",
-          "pattern": "(^true$)|(^false$)",
+          "type": "boolean",
           "description": "Признак работы в debug-режиме (логируется всё)"
         },
         "StartDelay": {
@@ -26,7 +25,7 @@
       "properties": {
         "Host": {
           "type": "string",
-          "description": "Хост LDAP, (asmpo-avisma)"
+          "description": "Хост LDAP, (vsmpo-avisma)"
         },
         "Port": {
           "type": "integer",
@@ -42,6 +41,20 @@
         }
       },
       "required": [ "Host", "Username", "Password" ]
+    },
+
+    "DefaultOU": {
+      "type": "string",
+      "description": "OU, в котором создаются объекты. Используется при отсутствии OU в свойствах сообщения."
+    },
+
+    "Fields": {
+      "type": "object",
+      "description": "Набор свойств, которые должен обработать плагин (записать в создаваемый/изменяемый объект)",
+      "additionalProperties": {
+        "type": "integer",
+        "pattern": "[0-2]"
+      }
     }
 
   },

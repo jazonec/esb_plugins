@@ -1,7 +1,6 @@
 ﻿using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Threading;
 using System;
 using Quartz.Impl;
@@ -61,53 +60,47 @@ namespace openplugins.ADIntegration
             scheduler = await StdSchedulerFactory.GetDefaultScheduler();
             await scheduler.Start();
 
-            if (settings.Users != null)
+            try
             {
-                await CreateUsersJobAsync(ct, settings.Users);
+                foreach (ReadObjects jobSettings in settings.Jobs)
+                {
+                    IJobDetail jobDetail = CreateJob(typeof(ObjectJob), jobSettings);
+                    ITrigger trigger = CreateTrigger(jobSettings.Name, jobSettings.Cron);
+                    await scheduler.ScheduleJob(jobDetail, trigger, ct);
+                    WriteLogString(string.Format("Запущено задание '{0}' с расписанием '{1}'", jobSettings.Name, jobSettings.Cron));
+                }
+                while (!ct.IsCancellationRequested)
+                {
+                    ct.WaitHandle.WaitOne(5000);
+                }
             }
-            if (settings.Groups != null)
+            catch (Exception ex)
             {
-                await CreateGroupJobAsync(ct, settings.Groups);
+                WriteLogString(ex.Message);
+                throw ex;
             }
 
-            while (!ct.IsCancellationRequested)
-            {
-                ct.WaitHandle.WaitOne(5000);
-            }
             await scheduler.Shutdown();
         }
-        private IJobDetail CreateJob(Type jobType, object settings)
+        private IJobDetail CreateJob(Type jobType, ReadObjects settings)
         {
-            var name = jobType.Name;
             IJobDetail jobDetail = JobBuilder.Create(jobType)
-                .WithIdentity(name, "group")
+                .WithIdentity(settings.Name)
                 .Build();
             jobDetail.JobDataMap["mainclass"] = this;
             jobDetail.JobDataMap["settings"] = settings;
             jobDetail.JobDataMap["ldapConnection"] = ldapConnection;
             return jobDetail;
         }
-        private ITrigger CreateTrigger(Type jobType, string cron)
+        private ITrigger CreateTrigger(string name, string cron)
         {
-            var name = jobType.Name + "_trigger";
+            string _name = name + "_trigger";
             ITrigger trigger = TriggerBuilder.Create()
-                .WithIdentity(name, "group")
+                .WithIdentity(_name, "group")
                 .WithCronSchedule(cron)
                 .StartNow()
                 .Build();
             return trigger;
-        }
-        private async Task CreateGroupJobAsync(CancellationToken ct, ReadGroups settings)
-        {
-            IJobDetail jobDetail = CreateJob(typeof(GroupsJob), settings);
-            ITrigger trigger = CreateTrigger(typeof(GroupsJob), settings.Cron);
-            await scheduler.ScheduleJob(jobDetail, trigger, ct);
-        }
-        private async Task CreateUsersJobAsync(CancellationToken ct, ReadUsers settings)
-        {
-            IJobDetail jobDetail = CreateJob(typeof(UsersJob), settings);
-            ITrigger trigger = CreateTrigger(typeof(UsersJob), settings.Cron);
-            await scheduler.ScheduleJob(jobDetail, trigger, ct);
         }
         public void SendToESB(JObject objectToSend, string objectType, string classId)
         {

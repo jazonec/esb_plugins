@@ -14,9 +14,17 @@
 Позволяет сгруппировать одиночные сообщения в одно пакетное.
 [Подробно](/doc/reflectbatchmessage.md)
 
+### OleDB
+Предоставляет функциональность взаимодействия с произвольным OleDB источником.
+[Подробно](/doc/oledb.md)
+
 ### ActiveMQ connector
 Позволяет отправлять/получать сообщения в брокер ActiveMQ.
 [Подробно](/doc/ActiveMQ.md)
+
+### RabbitMQ connector
+Позволяет отправлять/получать сообщения в брокер RabbitMQ.
+[Подробно](/doc/RabbitMQ.md)
 
 ### ActiveDirectory connector
 Позволяет получать/изменять объекты ActiveDirectory.
