@@ -114,6 +114,7 @@ namespace openplugins.ReflectChangedMessage
             Message _responseMessage = _messageFactory.CreateMessage(message.Type + "_changed");
             _responseMessage.Body = message.Body;
             _responseMessage.ClassId = message.ClassId;
+            _responseMessage.Properties = CollectionCloning.DictionaryClone(message.Properties);
             _responseMessage.SetPropertyWithValue("originalId", message.Id.ToString());
             _responseMessage.SetPropertyWithValue("originalSource", message.Source);
             _responseMessage.SetPropertyWithValue("originalType", message.Type);
