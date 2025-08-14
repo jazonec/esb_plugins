@@ -1,4 +1,4 @@
-﻿using ESB_ConnectionPoints.PluginsInterfaces;
+using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
 using System;
 using RestSharp;
@@ -23,6 +23,7 @@ namespace openplugins.AESServerClient
 
         // RSA
         private readonly EncryptTools _encryptTools;
+        private RestClient _restClient;
 
         public OutgoingRESTClient(JObject settings, IServiceLocator serviceLocator)
         {
@@ -49,10 +50,12 @@ namespace openplugins.AESServerClient
 
         public void Dispose()
         {
+            _restClient?.Dispose();
         }
 
         public void Initialize()
         {
+            _restClient = new RestClient(_endpointSettings.Url);
         }
 
         public void Run(IMessageSource messageSource, IMessageReplyHandler replyHandler, CancellationToken ct)
@@ -81,7 +84,7 @@ namespace openplugins.AESServerClient
                     WriteLogString(o.ToString());
                     try
                     {
-                        SendMessageToEndpoint(o);
+                        SendMessageToEndpointAsync(o, ct).GetAwaiter().GetResult();
                         messageSource.CompletePeekLock(message.Id);
                     }
                     catch (WebException ex)
@@ -107,27 +110,22 @@ namespace openplugins.AESServerClient
             }
         }
 
-        private void SendMessageToEndpoint(JObject message)
+        private async Task SendMessageToEndpointAsync(JObject message, CancellationToken ct)
         {
-            using (RestClient client = new RestClient(_endpointSettings.Url))
-            {
-                RestRequest request = new RestRequest(_endpointSettings.Url, _endpointSettings.Method)
-                    .AddHeader("login", _endpointSettings.Username)
-                    .AddHeader("key", _endpointSettings.Password)
-                    .AddHeader("Content-Encoding", "UTF-8")
-                    .AddStringBody(message.ToString(), ContentType.Json);
+            RestRequest request = new RestRequest(_endpointSettings.Url, _endpointSettings.Method)
+                .AddHeader("login", _endpointSettings.Username)
+                .AddHeader("key", _endpointSettings.Password)
+                .AddHeader("Content-Encoding", "UTF-8")
+                .AddStringBody(message.ToString(), ContentType.Json);
 
-                var resTask = client.ExecuteAsync(request);
-                resTask.Wait();
-                var response = resTask.Result;
-                if (resTask.Status == TaskStatus.Faulted)
-                {
-                    throw new WebException(resTask.Exception.Message);
-                }
-                else if (response.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new InvalidDataException(Encoding.Unicode.GetString(Encoding.Unicode.GetBytes(response.Content)));
-                }
+            var response = await _restClient.ExecuteAsync(request, ct);
+            if (response.ErrorException != null)
+            {
+                throw new WebException(response.ErrorException.Message, response.ErrorException);
+            }
+            else if (response.StatusCode != HttpStatusCode.OK)
+            {
+                throw new InvalidDataException(Encoding.Unicode.GetString(Encoding.Unicode.GetBytes(response.Content)));
             }
         }
 

@@ -1,4 +1,4 @@
-﻿using ESB_ConnectionPoints.PluginsInterfaces;
+using ESB_ConnectionPoints.PluginsInterfaces;
 using System;
 using System.Net;
 using System.Text;
@@ -81,7 +81,7 @@ namespace openplugins.AESServerClient
                 }
             }
             WriteLogString("Останавливаю сервер");
-            task.Wait();
+            task.Wait(ct);
         }
 
         private bool SendMessageToESB(string messageBody, Guid messageId, IDictionary<string, string> headers)

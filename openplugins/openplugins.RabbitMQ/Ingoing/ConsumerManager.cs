@@ -1,4 +1,4 @@
-﻿using ESB_ConnectionPoints.PluginsInterfaces;
+using ESB_ConnectionPoints.PluginsInterfaces;
 using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
@@ -117,7 +117,7 @@ namespace openplugins.RabbitMQ
                 int fiveTimes = 5;
                 while (!_messageHandler.HandleMessage(message))
                 {
-                    Thread.Sleep(1000);
+                    Thread.Sleep(TimeSpan.FromSeconds(1));
                     fiveTimes--;
                     if (fiveTimes == 0)
                     {
