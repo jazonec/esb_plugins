@@ -1,4 +1,4 @@
-﻿using Apache.NMS;
+using Apache.NMS;
 using Apache.NMS.ActiveMQ.Commands;
 using ESB_ConnectionPoints.PluginsInterfaces;
 using Newtonsoft.Json.Linq;
@@ -179,7 +179,7 @@ namespace openplugins.ActiveMQ
                 int fiveTimes = 5;
                 while (!_messageHandler.HandleMessage(esbMessage))
                 {
-                    Thread.Sleep(1000);
+                    Thread.Sleep(TimeSpan.FromSeconds(1));
                     fiveTimes--;
                     if (fiveTimes == 0)
                     {
